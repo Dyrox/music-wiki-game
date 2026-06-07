@@ -1,14 +1,16 @@
 import express from 'express';
 import cors from 'cors';
 import { PORT } from './config.js';
-import { getArtist } from './artist.js';
+import { getArtist, getAlbums, getMvs, getDesc } from './artist.js';
 import { searchArtists } from './search.js';
 import { findPath, shortestDistance } from './game.js';
 import { dailyChallenge, randomChallenge } from './challenge.js';
 import { currentRound, ensureRounds } from './rounds.js';
+import { heartbeat, complete, roundState } from './presence.js';
 
 const app = express();
 app.use(cors());
+app.use(express.json());
 
 function asyncRoute(
   fn: (req: express.Request, res: express.Response) => Promise<void>,
@@ -42,6 +44,27 @@ app.get(
       return;
     }
     res.json(await getArtist(id));
+  }),
+);
+
+app.get(
+  '/api/artist/:id/albums',
+  asyncRoute(async (req, res) => {
+    res.json(await getAlbums(Number(req.params.id)));
+  }),
+);
+
+app.get(
+  '/api/artist/:id/mvs',
+  asyncRoute(async (req, res) => {
+    res.json(await getMvs(Number(req.params.id)));
+  }),
+);
+
+app.get(
+  '/api/artist/:id/desc',
+  asyncRoute(async (req, res) => {
+    res.json(await getDesc(Number(req.params.id)));
   }),
 );
 
@@ -97,6 +120,32 @@ app.get(
     res.json(await currentRound());
   }),
 );
+
+// Lobby state: the current round + who's playing right now + round results.
+app.get(
+  '/api/round/state',
+  asyncRoute(async (_req, res) => {
+    const round = await currentRound();
+    const state = roundState(round.roundId, round.minMoves, round.startsAt);
+    res.json({ round, ...state });
+  }),
+);
+
+app.post('/api/round/heartbeat', (req, res) => {
+  const { name, roundId, status } = req.body ?? {};
+  if (typeof name === 'string' && Number.isFinite(roundId)) {
+    heartbeat(name, Number(roundId), status === 'playing' ? 'playing' : 'browsing');
+  }
+  res.json({ ok: true });
+});
+
+app.post('/api/round/complete', (req, res) => {
+  const { name, roundId, moves, timeMs } = req.body ?? {};
+  if (typeof name === 'string' && Number.isFinite(roundId) && Number.isFinite(moves)) {
+    complete(name, Number(roundId), Number(moves), Number(timeMs) || 0);
+  }
+  res.json({ ok: true });
+});
 
 app.listen(PORT, () => {
   console.log(`music-wiki-game server listening on http://localhost:${PORT}`);

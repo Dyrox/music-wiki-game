@@ -7,10 +7,65 @@ import {
   SONG_PAGE_SIZE,
 } from './config.js';
 import { mapLimit } from './util.js';
-import type { ArtistData, ArtistRef, Neighbor, Song } from './types.js';
+import type {
+  Album,
+  ArtistData,
+  ArtistDesc,
+  ArtistRef,
+  Mv,
+  Neighbor,
+  Song,
+} from './types.js';
 
 const cache = new TTLCache<ArtistData>(ARTIST_TTL_MS);
 const liteCache = new TTLCache<ArtistRef[]>(ARTIST_TTL_MS);
+const albumsCache = new TTLCache<Album[]>(ARTIST_TTL_MS);
+const mvsCache = new TTLCache<Mv[]>(ARTIST_TTL_MS);
+const descCache = new TTLCache<ArtistDesc>(ARTIST_TTL_MS);
+
+/** Albums for the 专辑 tab. */
+export function getAlbums(id: number): Promise<Album[]> {
+  return albumsCache.wrap(String(id), async () => {
+    const r = await ncm<any>('/artist/album', { id, limit: 60 });
+    const list: any[] = Array.isArray(r?.hotAlbums) ? r.hotAlbums : [];
+    return list.map((a) => ({
+      id: a.id,
+      name: a.name ?? '',
+      picUrl: a.picUrl ?? a.blurPicUrl ?? '',
+      publishTime: a.publishTime ?? 0,
+      size: a.size ?? 0,
+    }));
+  });
+}
+
+/** MVs for the MV tab. */
+export function getMvs(id: number): Promise<Mv[]> {
+  return mvsCache.wrap(String(id), async () => {
+    const r = await ncm<any>('/artist/mv', { id, limit: 60 });
+    const list: any[] = Array.isArray(r?.mvs) ? r.mvs : [];
+    return list.map((m) => ({
+      id: m.id,
+      name: m.name ?? '',
+      picUrl: m.imgurl ?? m.imgurl16v9 ?? '',
+      durationMs: m.duration ?? 0,
+      playCount: m.playCount ?? 0,
+    }));
+  });
+}
+
+/** Bio for the 歌手详情 tab. */
+export function getDesc(id: number): Promise<ArtistDesc> {
+  return descCache.wrap(String(id), async () => {
+    const r = await ncm<any>('/artist/desc', { id });
+    const intro: any[] = Array.isArray(r?.introduction) ? r.introduction : [];
+    return {
+      briefDesc: r?.briefDesc ?? '',
+      sections: intro
+        .filter((s) => s && s.txt)
+        .map((s) => ({ ti: s.ti ?? '', txt: s.txt ?? '' })),
+    };
+  });
+}
 const briefCache = new TTLCache<{ id: number; name: string; picUrl: string }>(ARTIST_TTL_MS);
 
 /** Just name + avatar for an artist (one cheap call) — used for round tiles. */

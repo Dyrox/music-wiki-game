@@ -38,3 +38,24 @@ export interface ArtistData extends ArtistHeader {
   songs: Song[];
   neighbors: Neighbor[];
 }
+
+export interface Album {
+  id: number;
+  name: string;
+  picUrl: string;
+  publishTime: number;
+  size: number;
+}
+
+export interface Mv {
+  id: number;
+  name: string;
+  picUrl: string;
+  durationMs: number;
+  playCount: number;
+}
+
+export interface ArtistDesc {
+  briefDesc: string;
+  sections: { ti: string; txt: string }[];
+}

@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import type { SearchArtist } from '../types';
 import type { GameMode } from '../game';
+import { getUsername } from '../player';
 import { SearchPicker } from './SearchPicker';
 import { RoundCard } from './RoundCard';
+import { LeaderboardPanel } from './LeaderboardPanel';
 
 export function SetupScreen({
   onBegin,
@@ -12,13 +14,15 @@ export function SetupScreen({
     start: { id: number; name: string },
     target: { id: number; name: string },
     minMoves: number | null,
+    roundId?: number,
   ) => void;
 }) {
   const [start, setStart] = useState<SearchArtist | null>(null);
   const [target, setTarget] = useState<SearchArtist | null>(null);
+  const me = getUsername();
 
   return (
-    <div className="mx-auto max-w-[820px] px-6 py-12">
+    <div className="mx-auto max-w-[1040px] px-6 py-10">
       {/* hero */}
       <div className="text-center">
         <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-nred/10 px-3 py-1 text-xs font-medium text-nred">
@@ -31,13 +35,17 @@ export function SetupScreen({
           每一步都要通过一首<b className="text-nred">合作歌曲</b>跳转 —— 在歌手主页里找到 TA
           和别人合作的曲子，点开合作者，就走到了下一位歌手。用最少的步数抵达终点。
         </p>
+        <div className="mt-3 text-xs text-gray-400">
+          你的代号 <span className="font-semibold text-gray-600">{me}</span>
+        </div>
       </div>
 
-      {/* the global timed round */}
-      <div className="mt-10">
+      {/* lobby: round on the left, leaderboard on the right */}
+      <div className="mt-9 grid gap-5 md:grid-cols-[1.05fr_0.95fr]">
         <RoundCard
-          onBegin={(s, t, minMoves) => onBegin('round', s, t, minMoves)}
+          onBegin={(s, t, minMoves, roundId) => onBegin('round', s, t, minMoves, roundId)}
         />
+        <LeaderboardPanel />
       </div>
 
       {/* free mode */}

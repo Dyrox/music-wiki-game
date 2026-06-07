@@ -34,6 +34,27 @@ export interface ArtistData {
   neighbors: Neighbor[];
 }
 
+export interface Album {
+  id: number;
+  name: string;
+  picUrl: string;
+  publishTime: number;
+  size: number;
+}
+
+export interface Mv {
+  id: number;
+  name: string;
+  picUrl: string;
+  durationMs: number;
+  playCount: number;
+}
+
+export interface ArtistDesc {
+  briefDesc: string;
+  sections: { ti: string; txt: string }[];
+}
+
 export interface SearchArtist {
   id: number;
   name: string;
@@ -70,4 +91,24 @@ export interface Round {
   start: RoundTile;
   target: RoundTile;
   minMoves: number;
+}
+
+export interface LivePlayer {
+  name: string;
+  status: 'browsing' | 'playing' | 'done';
+  bot?: boolean;
+}
+
+export interface RoundResultEntry {
+  name: string;
+  moves: number;
+  timeMs: number;
+  bot?: boolean;
+}
+
+export interface RoundState {
+  round: Round;
+  online: LivePlayer[];
+  results: RoundResultEntry[];
+  onlineCount: number;
 }

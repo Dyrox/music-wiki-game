@@ -3,6 +3,7 @@ import { api } from '../api';
 import type { ArtistData, ArtistRef } from '../types';
 import { SafeImg, Spinner } from './ui';
 import { SongRow } from './SongRow';
+import { AlbumsPanel, MvsPanel, DescPanel, SimiPanel } from './ArtistTabs';
 
 const TABS = ['歌曲', '专辑', 'MV', '歌手详情', '相似歌手'] as const;
 
@@ -20,12 +21,14 @@ export function ArtistPage({
   const [data, setData] = useState<ArtistData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [collabOnly, setCollabOnly] = useState(false);
+  const [tab, setTab] = useState(0);
 
   useEffect(() => {
     let alive = true;
     setData(null);
     setError(null);
     setCollabOnly(false);
+    setTab(0);
     api
       .artist(artistId)
       .then((d) => alive && setData(d))
@@ -91,24 +94,33 @@ export function ArtistPage({
       <div className="mt-8 flex items-center gap-7 border-b border-gray-100 text-[15px]">
         {TABS.map((t, i) => {
           const count = t === '专辑' ? data.albumSize : t === 'MV' ? data.mvSize : 0;
-          const active = i === 0;
+          const active = i === tab;
           return (
-            <div
+            <button
               key={t}
-              className={`-mb-px cursor-default border-b-2 pb-3 ${
+              onClick={() => setTab(i)}
+              className={`-mb-px border-b-2 pb-3 transition ${
                 active
                   ? 'border-nred font-semibold text-gray-900'
-                  : 'border-transparent text-gray-500'
+                  : 'border-transparent text-gray-500 hover:text-gray-800'
               }`}
             >
               {t}
               {count > 0 && <sup className="ml-0.5 text-[11px] text-gray-400">{count}</sup>}
-            </div>
+            </button>
           );
         })}
       </div>
 
-      {/* ---- hot songs ---- */}
+      {/* ---- non-song tabs ---- */}
+      {tab === 1 && <AlbumsPanel artistId={artistId} />}
+      {tab === 2 && <MvsPanel artistId={artistId} />}
+      {tab === 3 && <DescPanel artistId={artistId} />}
+      {tab === 4 && <SimiPanel />}
+
+      {/* ---- hot songs (歌曲 tab) ---- */}
+      {tab === 0 && (
+      <>
       <div className="mt-6 flex items-center justify-between">
         <h2 className="text-lg font-bold text-gray-900">
           热门歌曲 <span className="text-gray-300">›</span>
@@ -152,6 +164,8 @@ export function ArtistPage({
           />
         ))}
       </div>
+      </>
+      )}
     </div>
   );
 }

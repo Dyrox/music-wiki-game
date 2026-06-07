@@ -6,6 +6,7 @@ export interface GameState {
   phase: 'setup' | 'playing' | 'won';
   mode: GameMode;
   date?: string;
+  roundId?: number;
   start: ArtistRef;
   target: ArtistRef;
   minMoves: number | null;
@@ -31,6 +32,7 @@ export type Action =
       type: 'begin';
       mode: GameMode;
       date?: string;
+      roundId?: number;
       start: ArtistRef;
       target: ArtistRef;
       minMoves: number | null;
@@ -47,6 +49,7 @@ export function reducer(state: GameState, action: Action): GameState {
         phase: 'playing',
         mode: action.mode,
         date: action.date,
+        roundId: action.roundId,
         start: action.start,
         target: action.target,
         minMoves: action.minMoves,
