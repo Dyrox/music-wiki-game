@@ -54,3 +54,20 @@ export interface PathResult {
   path: ArtistRef[] | null;
   moves: number | null;
 }
+
+export interface RoundTile {
+  id: number;
+  name: string;
+  picUrl: string;
+}
+
+export interface Round {
+  roundId: number;
+  durationMs: number;
+  startsAt: number;
+  endsAt: number;
+  serverNow: number;
+  start: RoundTile;
+  target: RoundTile;
+  minMoves: number;
+}

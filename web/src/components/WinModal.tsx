@@ -7,6 +7,7 @@ const modeName: Record<string, string> = {
   free: '自由模式',
   daily: '每日挑战',
   random: '随机挑战',
+  round: '本轮挑战',
 };
 
 export function WinModal({

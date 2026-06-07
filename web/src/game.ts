@@ -1,6 +1,6 @@
 import type { ArtistRef } from './types';
 
-export type GameMode = 'free' | 'daily' | 'random';
+export type GameMode = 'free' | 'daily' | 'random' | 'round';
 
 export interface GameState {
   phase: 'setup' | 'playing' | 'won';

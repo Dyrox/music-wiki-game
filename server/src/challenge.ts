@@ -57,7 +57,7 @@ async function boundedReachable(
     const batch = frontier.slice(0, opts.nodeBudget - fetched);
     fetched += batch.length;
 
-    const results = await mapLimit(batch, 8, (nid) =>
+    const results = await mapLimit(batch, 16, (nid) =>
       liteNeighbors(nid).catch(() => []),
     );
 
@@ -112,35 +112,49 @@ export function todayStr(): string {
   ).padStart(2, '0')}`;
 }
 
-export async function dailyChallenge(date = todayStr()): Promise<Challenge> {
-  const cached = dailyCache.get(date);
-  if (cached) return cached;
+export interface SeededResult {
+  start: { id: number; name: string };
+  target: { id: number; name: string };
+  minMoves: number;
+}
 
-  const rng = mulberry32(hashStr('mwg:' + date));
+/**
+ * Deterministic challenge from a string key — same key always yields the same
+ * start/target. Used for daily puzzles and for time-based global rounds.
+ */
+export async function generateSeeded(
+  key: string,
+  range: { min: number; max: number },
+): Promise<SeededResult> {
+  const rng = mulberry32(hashStr(key));
   const order = [...SEEDS].sort(() => rng() - 0.5); // deterministic shuffle of start candidates
-
   for (const seed of order) {
-    const res = await generateFromStart(seed.id, seed.name, rng, { min: 2, max: 4 });
-    if (res) {
-      const challenge: Challenge = {
-        mode: 'daily',
-        date,
+    const res = await generateFromStart(seed.id, seed.name, rng, range);
+    if (res && res.target.id !== res.start.id) {
+      return {
         start: { id: res.start.id, name: res.start.name },
         target: { id: res.target.id, name: res.target.name },
         minMoves: res.minMoves,
       };
-      dailyCache.set(date, challenge);
-      return challenge;
     }
   }
-  throw new Error('failed to generate daily challenge');
+  throw new Error('failed to generate challenge for ' + key);
 }
 
-export async function randomChallenge(): Promise<Challenge> {
+export async function dailyChallenge(date = todayStr()): Promise<Challenge> {
+  const cached = dailyCache.get(date);
+  if (cached) return cached;
+  const r = await generateSeeded('mwg:' + date, { min: 2, max: 4 });
+  const challenge: Challenge = { mode: 'daily', date, ...r };
+  dailyCache.set(date, challenge);
+  return challenge;
+}
+
+async function generateRandom(): Promise<Challenge> {
   const rng = () => Math.random();
   for (let attempt = 0; attempt < SEEDS.length; attempt++) {
     const seed = SEEDS[Math.floor(rng() * SEEDS.length)];
-    const res = await generateFromStart(seed.id, seed.name, rng, { min: 2, max: 5 });
+    const res = await generateFromStart(seed.id, seed.name, rng, { min: 2, max: 4 });
     if (res && res.target.id !== res.start.id) {
       return {
         mode: 'random',
@@ -151,4 +165,30 @@ export async function randomChallenge(): Promise<Challenge> {
     }
   }
   throw new Error('failed to generate random challenge');
+}
+
+// Keep a few random challenges ready so "随机来一局" returns instantly; refill
+// in the background after each pop.
+const randomPool: Challenge[] = [];
+const POOL_TARGET = 3;
+let refilling = false;
+
+export async function refillRandomPool(): Promise<void> {
+  if (refilling) return;
+  refilling = true;
+  try {
+    while (randomPool.length < POOL_TARGET) {
+      randomPool.push(await generateRandom());
+    }
+  } catch (e) {
+    console.error('[random] refill failed:', (e as Error)?.message ?? e);
+  } finally {
+    refilling = false;
+  }
+}
+
+export async function randomChallenge(): Promise<Challenge> {
+  const ready = randomPool.shift();
+  void refillRandomPool(); // top up in the background
+  return ready ?? generateRandom();
 }

@@ -42,7 +42,7 @@ export async function findPath(
 
   for (let depth = 0; depth < maxDepth; depth++) {
     if (frontier.length === 0) break;
-    const expanded = await mapLimit(frontier, 6, async (nid) => ({
+    const expanded = await mapLimit(frontier, 12, async (nid) => ({
       nid,
       neighbors: await neighborRefsOf(nid),
     }));

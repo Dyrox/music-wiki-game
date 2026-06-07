@@ -1,17 +1,34 @@
 import { useState } from 'react';
 
 /**
- * The NetEase-Cloud-Music style top chrome: back arrow, search box, mic,
- * and the user chip on the right. The search box is intentionally inert
- * during a game (you can't teleport by searching — that's the whole point).
+ * The NetEase-Cloud-Music style top chrome: back arrow (returns to the previous
+ * artist), search box, and mic. The search box is intentionally inert during a
+ * game (you can't teleport by searching — that's the whole point).
  */
-export function TopBar({ targetName }: { targetName: string }) {
+export function TopBar({
+  targetName,
+  onBack,
+  canGoBack,
+}: {
+  targetName: string;
+  onBack: () => void;
+  canGoBack: boolean;
+}) {
   const [poke, setPoke] = useState(false);
 
   return (
     <header className="sticky top-0 z-20 border-b border-gray-100 bg-white/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-[1100px] items-center gap-4 px-6">
-        <button className="grid h-8 w-8 place-items-center rounded-full text-gray-400 hover:bg-gray-100">
+        <button
+          onClick={() => canGoBack && onBack()}
+          disabled={!canGoBack}
+          title={canGoBack ? '返回上一位歌手' : '已经在起点了'}
+          className={`grid h-8 w-8 place-items-center rounded-full ${
+            canGoBack
+              ? 'text-gray-500 hover:bg-gray-100'
+              : 'cursor-not-allowed text-gray-200'
+          }`}
+        >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -42,16 +59,6 @@ export function TopBar({ targetName }: { targetName: string }) {
             <path d="M5 11a7 7 0 0014 0M12 18v3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </button>
-
-        <div className="ml-auto flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-pink-300 to-indigo-300" />
-            <span className="text-sm text-gray-600">Dyrox</span>
-            <span className="rounded bg-gradient-to-r from-amber-500 to-yellow-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
-              VIP
-            </span>
-          </div>
-        </div>
       </div>
     </header>
   );

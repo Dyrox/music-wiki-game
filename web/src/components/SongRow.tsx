@@ -1,5 +1,6 @@
 import type { ArtistRef, Song } from '../types';
 import { mmss, songTags } from '../format';
+import { prefetchArtist } from '../api';
 import { SafeImg } from './ui';
 
 const tagStyle: Record<string, string> = {
@@ -110,6 +111,7 @@ export function SongRow({
                     {i > 0 && <span className="text-gray-300"> / </span>}
                     <button
                       onClick={() => onTravel({ id: a.id, name: a.name })}
+                      onMouseEnter={() => prefetchArtist(a.id)}
                       className={`group/chip inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-medium transition ${
                         isTarget
                           ? 'bg-amber-400 text-black hover:bg-amber-300'

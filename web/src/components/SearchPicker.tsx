@@ -25,18 +25,30 @@ export function SearchPicker({
       setResults([]);
       return;
     }
+    // `stale` guards against out-of-order responses: when the query changes we
+    // mark the in-flight request stale so a slow earlier request can't clobber
+    // the results for what's currently typed.
+    let stale = false;
     setLoading(true);
     const t = setTimeout(() => {
       api
         .search(q)
         .then((r) => {
+          if (stale) return;
           setResults(r);
           setOpen(true);
         })
-        .catch(() => setResults([]))
-        .finally(() => setLoading(false));
+        .catch(() => {
+          if (!stale) setResults([]);
+        })
+        .finally(() => {
+          if (!stale) setLoading(false);
+        });
     }, 250);
-    return () => clearTimeout(t);
+    return () => {
+      stale = true;
+      clearTimeout(t);
+    };
   }, [q]);
 
   useEffect(() => {

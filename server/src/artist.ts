@@ -11,6 +11,18 @@ import type { ArtistData, ArtistRef, Neighbor, Song } from './types.js';
 
 const cache = new TTLCache<ArtistData>(ARTIST_TTL_MS);
 const liteCache = new TTLCache<ArtistRef[]>(ARTIST_TTL_MS);
+const briefCache = new TTLCache<{ id: number; name: string; picUrl: string }>(ARTIST_TTL_MS);
+
+/** Just name + avatar for an artist (one cheap call) — used for round tiles. */
+export function getArtistBrief(
+  id: number,
+): Promise<{ id: number; name: string; picUrl: string }> {
+  return briefCache.wrap(String(id), async () => {
+    const info = await ncm<any>('/artists', { id });
+    const a = info?.artist ?? {};
+    return { id, name: a.name ?? '', picUrl: a.picUrl ?? a.img1v1Url ?? '' };
+  });
+}
 
 function normalizeSong(raw: any): Song | null {
   if (!raw || typeof raw.id !== 'number') return null;
@@ -44,15 +56,20 @@ async function fetchSongPage(
   return { songs: Array.isArray(r?.songs) ? r.songs : [], total: r?.total ?? 0 };
 }
 
-/** Full (capped) discography via deterministic offset pagination. */
+/**
+ * Full (capped) discography. The upstream is slow (~3-4s/call), so we fire all
+ * pages concurrently instead of waiting on page 0's `total` — one round-trip of
+ * latency instead of two. Pages past the end just come back empty.
+ */
 async function fetchAllRawSongs(id: number): Promise<any[]> {
-  const first = await fetchSongPage(id, 0);
-  const total = first.total || first.songs.length;
-  const pages = Math.min(MAX_SONG_PAGES, Math.ceil(total / SONG_PAGE_SIZE));
   const offsets: number[] = [];
-  for (let p = 1; p < pages; p++) offsets.push(p * SONG_PAGE_SIZE);
-  const rest = await mapLimit(offsets, 5, (off) => fetchSongPage(id, off).then((r) => r.songs));
-  return [first.songs, ...rest].flat();
+  for (let p = 0; p < MAX_SONG_PAGES; p++) offsets.push(p * SONG_PAGE_SIZE);
+  const pages = await mapLimit(offsets, MAX_SONG_PAGES, (off) =>
+    fetchSongPage(id, off)
+      .then((r) => r.songs)
+      .catch(() => []),
+  );
+  return pages.flat();
 }
 
 function buildNeighbors(selfId: number, songs: Song[]): Neighbor[] {

@@ -5,6 +5,7 @@ import { getArtist } from './artist.js';
 import { searchArtists } from './search.js';
 import { findPath } from './game.js';
 import { dailyChallenge, randomChallenge } from './challenge.js';
+import { currentRound, ensureRounds } from './rounds.js';
 
 const app = express();
 app.use(cors());
@@ -74,10 +75,22 @@ app.get(
   }),
 );
 
+// Global timed round (The-Wiki-Game style): same puzzle for everyone, rotates
+// every ROUND_MS. Returns the current pairing + timing for the countdown.
+app.get(
+  '/api/round/current',
+  asyncRoute(async (_req, res) => {
+    res.json(await currentRound());
+  }),
+);
+
 app.listen(PORT, () => {
   console.log(`music-wiki-game server listening on http://localhost:${PORT}`);
-  // Pre-warm today's daily challenge so the first player doesn't wait on BFS.
-  dailyChallenge()
-    .then((c) => console.log(`[daily] ${c.start.name} -> ${c.target.name} (${c.minMoves} moves)`))
-    .catch((e) => console.error('[daily] prewarm failed:', e?.message ?? e));
+  // Keep the current + next global round generated ahead of time so
+  // /api/round/current is always instant and rotates smoothly.
+  ensureRounds()
+    .then(() => currentRound())
+    .then((r) => console.log(`[round] #${r.roundId}: ${r.start.name} -> ${r.target.name} (${r.minMoves} moves)`))
+    .catch((e) => console.error('[round] prewarm failed:', e?.message ?? e));
+  setInterval(() => void ensureRounds(), 15_000);
 });
