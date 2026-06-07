@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
-import { getUsername } from '../player';
+import { useUsername } from '../player';
 import { elapsed } from '../format';
 import type { RoundState } from '../types';
 
 export function LeaderboardPanel() {
   const [state, setState] = useState<RoundState | null>(null);
   const [tab, setTab] = useState<'results' | 'online'>('results');
-  const me = getUsername();
+  const me = useUsername();
   const roundIdRef = useRef<number>(0);
 
   // poll lobby state

@@ -30,7 +30,8 @@ interface RealPlayer {
 }
 
 const ONLINE_TTL = 12_000;
-const BOTS_ENABLED = (process.env.BOTS ?? 'on') !== 'off';
+// Real players only by default. Set BOTS=on to add filler bots for demos.
+const BOTS_ENABLED = (process.env.BOTS ?? 'off') === 'on';
 
 const realPlayers = new Map<string, RealPlayer>(); // key: name
 const realResults = new Map<number, Map<string, RoundResult>>(); // roundId -> name -> result

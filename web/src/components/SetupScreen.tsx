@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import type { SearchArtist } from '../types';
 import type { GameMode } from '../game';
-import { getUsername } from '../player';
 import { SearchPicker } from './SearchPicker';
 import { RoundCard } from './RoundCard';
 import { LeaderboardPanel } from './LeaderboardPanel';
+import { HandleEditor } from './HandleEditor';
 
 export function SetupScreen({
   onBegin,
@@ -19,7 +19,6 @@ export function SetupScreen({
 }) {
   const [start, setStart] = useState<SearchArtist | null>(null);
   const [target, setTarget] = useState<SearchArtist | null>(null);
-  const me = getUsername();
 
   return (
     <div className="mx-auto max-w-[1040px] px-6 py-10">
@@ -35,8 +34,8 @@ export function SetupScreen({
           每一步都要通过一首<b className="text-nred">合作歌曲</b>跳转 —— 在歌手主页里找到 TA
           和别人合作的曲子，点开合作者，就走到了下一位歌手。用最少的步数抵达终点。
         </p>
-        <div className="mt-3 text-xs text-gray-400">
-          你的代号 <span className="font-semibold text-gray-600">{me}</span>
+        <div className="mt-3">
+          <HandleEditor />
         </div>
       </div>
 

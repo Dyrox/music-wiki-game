@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useRef } from 'react';
 import { initialState, reducer, currentArtist, moveCount } from './game';
 import { api } from './api';
-import { getUsername } from './player';
+import { useUsername } from './player';
 import { SetupScreen } from './components/SetupScreen';
 import { TopBar } from './components/TopBar';
 import { GameHud } from './components/GameHud';
@@ -10,7 +10,7 @@ import { WinModal } from './components/WinModal';
 
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const me = getUsername();
+  const me = useUsername();
   const reported = useRef(false);
 
   // While playing a global round, announce presence ("playing") and record the
