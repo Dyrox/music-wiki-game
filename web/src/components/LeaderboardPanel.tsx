@@ -8,39 +8,30 @@ export function LeaderboardPanel() {
   const [state, setState] = useState<RoundState | null>(null);
   const [tab, setTab] = useState<'results' | 'online'>('results');
   const me = useUsername();
-  const roundIdRef = useRef<number>(0);
+  const meRef = useRef(me);
+  meRef.current = me; // always heartbeat with the latest (possibly renamed) handle
 
-  // poll lobby state
+  // Poll lobby state AND heartbeat on every tick, so a new player is registered
+  // on their very first fetch and everyone refreshes quickly.
   useEffect(() => {
     let alive = true;
-    const load = async () => {
+    const tick = async () => {
       try {
         const s = await api.roundState();
-        if (alive) {
-          setState(s);
-          roundIdRef.current = s.round.roundId;
-        }
+        if (!alive) return;
+        setState(s);
+        api.heartbeat(getClientId(), meRef.current, s.round.roundId, 'browsing');
       } catch {
         /* ignore */
       }
     };
-    load();
-    const poll = setInterval(load, 4000);
+    tick();
+    const poll = setInterval(tick, 1500);
     return () => {
       alive = false;
       clearInterval(poll);
     };
   }, []);
-
-  // heartbeat that we're here, browsing the lobby
-  useEffect(() => {
-    const beat = () => {
-      if (roundIdRef.current) api.heartbeat(getClientId(), me, roundIdRef.current, 'browsing');
-    };
-    beat();
-    const hb = setInterval(beat, 5000);
-    return () => clearInterval(hb);
-  }, [me]);
 
   const online = state?.online ?? [];
   const results = state?.results ?? [];

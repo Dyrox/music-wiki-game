@@ -21,7 +21,7 @@ export default function App() {
       reported.current = false;
       const beat = () => api.heartbeat(getClientId(), me, state.roundId!, 'playing');
       beat();
-      const hb = setInterval(beat, 5000);
+      const hb = setInterval(beat, 3000);
       return () => clearInterval(hb);
     }
     if (state.phase === 'won' && !reported.current) {

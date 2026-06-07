@@ -30,7 +30,7 @@ interface RealPlayer {
   lastSeen: number;
 }
 
-const ONLINE_TTL = 12_000;
+const ONLINE_TTL = 8_000;
 // Real players only by default. Set BOTS=on to add filler bots for demos.
 const BOTS_ENABLED = (process.env.BOTS ?? 'off') === 'on';
 
