@@ -1,6 +1,6 @@
 import { TTLCache } from './cache.js';
 import { ROUND_MS } from './config.js';
-import { generateSeeded } from './challenge.js';
+import { generateVerified } from './challenge.js';
 import { getArtistBrief } from './artist.js';
 
 interface Tile {
@@ -31,7 +31,7 @@ export function roundIdFor(t: number = Date.now()): number {
 }
 
 async function buildRound(roundId: number): Promise<RoundCore> {
-  const c = await generateSeeded('round:' + roundId, { min: 2, max: 4 });
+  const c = await generateVerified('round:' + roundId, { min: 2, max: 4 });
   const [s, t] = await Promise.all([
     getArtistBrief(c.start.id),
     getArtistBrief(c.target.id),

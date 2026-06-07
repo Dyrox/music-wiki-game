@@ -3,7 +3,7 @@ import cors from 'cors';
 import { PORT } from './config.js';
 import { getArtist } from './artist.js';
 import { searchArtists } from './search.js';
-import { findPath } from './game.js';
+import { findPath, shortestDistance } from './game.js';
 import { dailyChallenge, randomChallenge } from './challenge.js';
 import { currentRound, ensureRounds } from './rounds.js';
 
@@ -57,6 +57,20 @@ app.get(
       return;
     }
     res.json((await findPath(from, to, maxDepth)) ?? { path: null, moves: null });
+  }),
+);
+
+// exact shortest distance over the full collaboration graph (debug / QA)
+app.get(
+  '/api/distance',
+  asyncRoute(async (req, res) => {
+    const from = Number(req.query.from);
+    const to = Number(req.query.to);
+    if (!Number.isFinite(from) || !Number.isFinite(to)) {
+      res.status(400).json({ error: 'bad from/to' });
+      return;
+    }
+    res.json({ from, to, distance: await shortestDistance(from, to, 6) });
   }),
 );
 

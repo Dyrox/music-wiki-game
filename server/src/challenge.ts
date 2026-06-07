@@ -1,4 +1,5 @@
 import { liteNeighbors } from './artist.js';
+import { shortestDistance } from './game.js';
 import { mapLimit } from './util.js';
 import { SEEDS } from './seeds.js';
 
@@ -141,10 +142,48 @@ export async function generateSeeded(
   throw new Error('failed to generate challenge for ' + key);
 }
 
+/**
+ * Like generateSeeded, but verifies the TRUE shortest distance over the full
+ * graph (the cheap generator over-estimates), reports it as minMoves, and skips
+ * pairs that turn out trivially close (< range.min) so puzzles aren't 1-steppers.
+ */
+export async function generateVerified(
+  key: string,
+  range: { min: number; max: number },
+): Promise<SeededResult> {
+  const rng = mulberry32(hashStr(key));
+  const order = [...SEEDS].sort(() => rng() - 0.5);
+  let fallback: SeededResult | null = null;
+
+  for (const seed of order) {
+    const res = await generateFromStart(seed.id, seed.name, rng, {
+      min: 2,
+      max: range.max,
+    });
+    if (!res || res.target.id === res.start.id) continue;
+
+    const candidate: SeededResult = {
+      start: { id: res.start.id, name: res.start.name },
+      target: { id: res.target.id, name: res.target.name },
+      minMoves: res.minMoves,
+    };
+
+    const d = await shortestDistance(res.start.id, res.target.id, range.max + 1);
+    if (d !== null) {
+      if (d >= range.min) return { ...candidate, minMoves: d }; // honest & non-trivial
+      continue; // trivially close — try another start
+    }
+    // couldn't verify within budget — keep the cheap estimate as a fallback
+    if (!fallback) fallback = candidate;
+  }
+
+  return fallback ?? generateSeeded(key, range);
+}
+
 export async function dailyChallenge(date = todayStr()): Promise<Challenge> {
   const cached = dailyCache.get(date);
   if (cached) return cached;
-  const r = await generateSeeded('mwg:' + date, { min: 2, max: 4 });
+  const r = await generateVerified('mwg:' + date, { min: 2, max: 4 });
   const challenge: Challenge = { mode: 'daily', date, ...r };
   dailyCache.set(date, challenge);
   return challenge;
