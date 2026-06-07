@@ -1,0 +1,14 @@
+{
+  "name": "music-wiki-game",
+  "private": true,
+  "version": "0.1.0",
+  "description": "NetEase Cloud Music styled artist wiki-game: travel artist A -> B via collaboration songs",
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,green \"pnpm -C server dev\" \"pnpm -C web dev\"",
+    "build": "pnpm -C web build",
+    "start": "pnpm -C server start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
