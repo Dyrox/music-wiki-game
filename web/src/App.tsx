@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef } from 'react';
 import { initialState, reducer, currentArtist, moveCount } from './game';
-import { api } from './api';
+import { api, leaveBeacon } from './api';
 import { getClientId, useUsername } from './player';
 import { SetupScreen } from './components/SetupScreen';
 import { TopBar } from './components/TopBar';
@@ -13,6 +13,18 @@ export default function App() {
   const me = useUsername();
   const reported = useRef(false);
 
+  // Tell the server we're gone the moment the tab closes, so other players see
+  // us drop off in ~1.5s instead of waiting for the presence timeout.
+  useEffect(() => {
+    const onLeave = () => leaveBeacon(getClientId());
+    window.addEventListener('pagehide', onLeave);
+    window.addEventListener('beforeunload', onLeave);
+    return () => {
+      window.removeEventListener('pagehide', onLeave);
+      window.removeEventListener('beforeunload', onLeave);
+    };
+  }, []);
+
   // While playing a global round, announce presence ("playing") and record the
   // result once on win — so the lobby leaderboard reflects real players.
   useEffect(() => {
@@ -21,7 +33,7 @@ export default function App() {
       reported.current = false;
       const beat = () => api.heartbeat(getClientId(), me, state.roundId!, 'playing');
       beat();
-      const hb = setInterval(beat, 3000);
+      const hb = setInterval(beat, 2500);
       return () => clearInterval(hb);
     }
     if (state.phase === 'won' && !reported.current) {

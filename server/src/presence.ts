@@ -30,7 +30,7 @@ interface RealPlayer {
   lastSeen: number;
 }
 
-const ONLINE_TTL = 8_000;
+const ONLINE_TTL = 6_000; // fallback for crashes; tab-close uses an explicit leave
 // Real players only by default. Set BOTS=on to add filler bots for demos.
 const BOTS_ENABLED = (process.env.BOTS ?? 'off') === 'on';
 
@@ -47,6 +47,11 @@ export function heartbeat(
 ): void {
   if (!clientId) return;
   realPlayers.set(clientId, { clientId, name: name || clientId, roundId, status, lastSeen: Date.now() });
+}
+
+/** Remove a player immediately (sent on tab close via sendBeacon). */
+export function leave(clientId: string): void {
+  if (clientId) realPlayers.delete(clientId);
 }
 
 export function complete(

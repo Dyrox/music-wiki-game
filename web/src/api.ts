@@ -28,6 +28,18 @@ function postJSON(url: string, body: unknown): void {
   }).catch(() => {});
 }
 
+/** Reliable "I'm leaving" on tab close — sendBeacon survives page unload. */
+export function leaveBeacon(clientId: string): void {
+  try {
+    const blob = new Blob([JSON.stringify({ clientId })], { type: 'application/json' });
+    if (!navigator.sendBeacon?.('/api/round/leave', blob)) {
+      postJSON('/api/round/leave', { clientId });
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 // Warm the server cache for an artist we're likely to visit next (hover).
 // Deduped so repeated hovers don't refetch.
 const prefetched = new Set<number>();

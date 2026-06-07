@@ -6,7 +6,7 @@ import { searchArtists } from './search.js';
 import { findPath, shortestDistance } from './game.js';
 import { dailyChallenge, randomChallenge } from './challenge.js';
 import { currentRound, ensureRounds } from './rounds.js';
-import { heartbeat, complete, roundState } from './presence.js';
+import { heartbeat, complete, leave, roundState } from './presence.js';
 
 const app = express();
 app.use(cors());
@@ -141,6 +141,12 @@ app.post('/api/round/heartbeat', (req, res) => {
       status === 'playing' ? 'playing' : 'browsing',
     );
   }
+  res.json({ ok: true });
+});
+
+app.post('/api/round/leave', (req, res) => {
+  const { clientId } = req.body ?? {};
+  if (typeof clientId === 'string') leave(clientId);
   res.json({ ok: true });
 });
 
