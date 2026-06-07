@@ -37,6 +37,25 @@ function readInitial(): string {
 let current = readInitial();
 const listeners = new Set<() => void>();
 
+// A stable per-browser id (separate from the display name) so renaming doesn't
+// spawn a "ghost" player — presence is keyed by this, the name is just display.
+let clientId: string | null = null;
+export function getClientId(): string {
+  if (clientId) return clientId;
+  try {
+    let id = localStorage.getItem('mwg_clientId');
+    if (!id) {
+      id =
+        (globalThis.crypto?.randomUUID?.() ??
+          Math.random().toString(36).slice(2) + Date.now().toString(36));
+      localStorage.setItem('mwg_clientId', id);
+    }
+    return (clientId = id);
+  } catch {
+    return (clientId = 'anon-' + Math.random().toString(36).slice(2));
+  }
+}
+
 export function getUsername(): string {
   return current;
 }

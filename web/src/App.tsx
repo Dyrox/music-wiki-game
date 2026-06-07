@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useRef } from 'react';
 import { initialState, reducer, currentArtist, moveCount } from './game';
 import { api } from './api';
-import { useUsername } from './player';
+import { getClientId, useUsername } from './player';
 import { SetupScreen } from './components/SetupScreen';
 import { TopBar } from './components/TopBar';
 import { GameHud } from './components/GameHud';
@@ -19,7 +19,7 @@ export default function App() {
     if (state.mode !== 'round' || state.roundId == null) return;
     if (state.phase === 'playing') {
       reported.current = false;
-      const beat = () => api.heartbeat(me, state.roundId!, 'playing');
+      const beat = () => api.heartbeat(getClientId(), me, state.roundId!, 'playing');
       beat();
       const hb = setInterval(beat, 5000);
       return () => clearInterval(hb);
@@ -27,6 +27,7 @@ export default function App() {
     if (state.phase === 'won' && !reported.current) {
       reported.current = true;
       api.complete(
+        getClientId(),
         me,
         state.roundId,
         moveCount(state),

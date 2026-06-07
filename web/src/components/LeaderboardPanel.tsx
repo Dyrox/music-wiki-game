@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
-import { useUsername } from '../player';
+import { getClientId, useUsername } from '../player';
 import { elapsed } from '../format';
 import type { RoundState } from '../types';
 
@@ -35,7 +35,7 @@ export function LeaderboardPanel() {
   // heartbeat that we're here, browsing the lobby
   useEffect(() => {
     const beat = () => {
-      if (roundIdRef.current) api.heartbeat(me, roundIdRef.current, 'browsing');
+      if (roundIdRef.current) api.heartbeat(getClientId(), me, roundIdRef.current, 'browsing');
     };
     beat();
     const hb = setInterval(beat, 5000);

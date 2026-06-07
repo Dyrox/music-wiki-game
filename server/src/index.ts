@@ -132,17 +132,28 @@ app.get(
 );
 
 app.post('/api/round/heartbeat', (req, res) => {
-  const { name, roundId, status } = req.body ?? {};
-  if (typeof name === 'string' && Number.isFinite(roundId)) {
-    heartbeat(name, Number(roundId), status === 'playing' ? 'playing' : 'browsing');
+  const { clientId, name, roundId, status } = req.body ?? {};
+  if (typeof clientId === 'string' && Number.isFinite(roundId)) {
+    heartbeat(
+      clientId,
+      typeof name === 'string' ? name : '',
+      Number(roundId),
+      status === 'playing' ? 'playing' : 'browsing',
+    );
   }
   res.json({ ok: true });
 });
 
 app.post('/api/round/complete', (req, res) => {
-  const { name, roundId, moves, timeMs } = req.body ?? {};
-  if (typeof name === 'string' && Number.isFinite(roundId) && Number.isFinite(moves)) {
-    complete(name, Number(roundId), Number(moves), Number(timeMs) || 0);
+  const { clientId, name, roundId, moves, timeMs } = req.body ?? {};
+  if (typeof clientId === 'string' && Number.isFinite(roundId) && Number.isFinite(moves)) {
+    complete(
+      clientId,
+      typeof name === 'string' ? name : '',
+      Number(roundId),
+      Number(moves),
+      Number(timeMs) || 0,
+    );
   }
   res.json({ ok: true });
 });

@@ -23,6 +23,7 @@ export interface RoundResult {
 }
 
 interface RealPlayer {
+  clientId: string;
   name: string;
   roundId: number;
   status: PlayerStatus;
@@ -33,32 +34,40 @@ const ONLINE_TTL = 12_000;
 // Real players only by default. Set BOTS=on to add filler bots for demos.
 const BOTS_ENABLED = (process.env.BOTS ?? 'off') === 'on';
 
-const realPlayers = new Map<string, RealPlayer>(); // key: name
-const realResults = new Map<number, Map<string, RoundResult>>(); // roundId -> name -> result
+// Keyed by a stable per-browser clientId (NOT the display name) so renaming
+// updates the same player instead of creating a duplicate.
+const realPlayers = new Map<string, RealPlayer>(); // key: clientId
+const realResults = new Map<number, Map<string, RoundResult>>(); // roundId -> clientId -> result
 
-export function heartbeat(name: string, roundId: number, status: PlayerStatus): void {
-  if (!name) return;
-  realPlayers.set(name, { name, roundId, status, lastSeen: Date.now() });
+export function heartbeat(
+  clientId: string,
+  name: string,
+  roundId: number,
+  status: PlayerStatus,
+): void {
+  if (!clientId) return;
+  realPlayers.set(clientId, { clientId, name: name || clientId, roundId, status, lastSeen: Date.now() });
 }
 
 export function complete(
+  clientId: string,
   name: string,
   roundId: number,
   moves: number,
   timeMs: number,
 ): void {
-  if (!name) return;
+  if (!clientId) return;
   let m = realResults.get(roundId);
   if (!m) {
     m = new Map();
     realResults.set(roundId, m);
   }
-  const prev = m.get(name);
+  const prev = m.get(clientId);
   // keep the best attempt (fewer moves, then faster)
   if (!prev || moves < prev.moves || (moves === prev.moves && timeMs < prev.timeMs)) {
-    m.set(name, { name, moves, timeMs });
+    m.set(clientId, { name: name || clientId, moves, timeMs });
   }
-  const p = realPlayers.get(name);
+  const p = realPlayers.get(clientId);
   if (p) p.status = 'done';
 }
 
@@ -131,32 +140,37 @@ export function roundState(roundId: number, minMoves: number, startsAt: number):
 
   const bots = botsForRound(roundId, minMoves);
 
-  // results: real completes for this round + bots that have "finished"
+  const real = realResults.get(roundId);
+
+  // results: real completes (keyed by clientId) + bots that have "finished"
   const resultMap = new Map<string, RoundResult>();
   for (const b of bots) {
-    if (b.finishAt <= elapsed) resultMap.set(b.name, { name: b.name, moves: b.moves, timeMs: b.timeMs, bot: true });
+    if (b.finishAt <= elapsed)
+      resultMap.set('bot:' + b.name, { name: b.name, moves: b.moves, timeMs: b.timeMs, bot: true });
   }
-  const real = realResults.get(roundId);
-  if (real) for (const r of real.values()) resultMap.set(r.name, r);
+  if (real) for (const [cid, r] of real) resultMap.set(cid, r);
 
   const results = [...resultMap.values()]
     .sort((a, b) => a.moves - b.moves || a.timeMs - b.timeMs)
     .slice(0, 15);
 
-  // online: bots still "playing" + real players active in this round (not done)
-  const finished = new Set(results.map((r) => r.name));
+  // online: bots still "playing" + real players active in this round (not done),
+  // de-duped by clientId (so renaming never doubles you up)
   const online: LivePlayer[] = [];
+  const seen = new Set<string>();
   for (const b of bots) {
-    if (b.finishAt > elapsed) online.push({ name: b.name, status: 'playing', bot: true });
+    const key = 'bot:' + b.name;
+    if (b.finishAt > elapsed && !seen.has(key)) {
+      seen.add(key);
+      online.push({ name: b.name, status: 'playing', bot: true });
+    }
   }
   for (const p of realPlayers.values()) {
-    if (p.roundId !== roundId) continue;
-    if (p.status === 'done' && finished.has(p.name)) continue;
+    if (p.roundId !== roundId || seen.has(p.clientId)) continue;
+    if (p.status === 'done' && real?.has(p.clientId)) continue; // already in results
+    seen.add(p.clientId);
     online.push({ name: p.name, status: p.status });
   }
-  // de-dupe by name (real wins over bot)
-  const seen = new Set<string>();
-  const dedupOnline = online.filter((p) => (seen.has(p.name) ? false : (seen.add(p.name), true)));
 
-  return { online: dedupOnline, results, onlineCount: dedupOnline.length };
+  return { online, results, onlineCount: online.length };
 }

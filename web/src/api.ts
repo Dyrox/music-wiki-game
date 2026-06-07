@@ -48,10 +48,19 @@ export const api = {
   random: () => getJSON<Challenge>(`/api/challenge/random`),
   round: () => getJSON<Round>(`/api/round/current`),
   roundState: () => getJSON<RoundState>(`/api/round/state`),
-  heartbeat: (name: string, roundId: number, status: 'browsing' | 'playing') =>
-    postJSON(`/api/round/heartbeat`, { name, roundId, status }),
-  complete: (name: string, roundId: number, moves: number, timeMs: number) =>
-    postJSON(`/api/round/complete`, { name, roundId, moves, timeMs }),
+  heartbeat: (
+    clientId: string,
+    name: string,
+    roundId: number,
+    status: 'browsing' | 'playing',
+  ) => postJSON(`/api/round/heartbeat`, { clientId, name, roundId, status }),
+  complete: (
+    clientId: string,
+    name: string,
+    roundId: number,
+    moves: number,
+    timeMs: number,
+  ) => postJSON(`/api/round/complete`, { clientId, name, roundId, moves, timeMs }),
   path: (from: number, to: number) =>
     getJSON<PathResult>(`/api/path?from=${from}&to=${to}&maxDepth=6`),
 };
