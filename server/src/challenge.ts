@@ -157,7 +157,7 @@ export async function generateVerified(
 
   for (const seed of order) {
     const res = await generateFromStart(seed.id, seed.name, rng, {
-      min: 2,
+      min: range.min,
       max: range.max,
     });
     if (!res || res.target.id === res.start.id) continue;
@@ -183,7 +183,7 @@ export async function generateVerified(
 export async function dailyChallenge(date = todayStr()): Promise<Challenge> {
   const cached = dailyCache.get(date);
   if (cached) return cached;
-  const r = await generateVerified('mwg:' + date, { min: 2, max: 4 });
+  const r = await generateVerified('mwg:' + date, { min: 3, max: 5 });
   const challenge: Challenge = { mode: 'daily', date, ...r };
   dailyCache.set(date, challenge);
   return challenge;
@@ -193,7 +193,7 @@ async function generateRandom(): Promise<Challenge> {
   const rng = () => Math.random();
   for (let attempt = 0; attempt < SEEDS.length; attempt++) {
     const seed = SEEDS[Math.floor(rng() * SEEDS.length)];
-    const res = await generateFromStart(seed.id, seed.name, rng, { min: 2, max: 4 });
+    const res = await generateFromStart(seed.id, seed.name, rng, { min: 3, max: 5 });
     if (res && res.target.id !== res.start.id) {
       return {
         mode: 'random',

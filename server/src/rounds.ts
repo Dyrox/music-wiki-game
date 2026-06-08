@@ -31,7 +31,7 @@ export function roundIdFor(t: number = Date.now()): number {
 }
 
 async function buildRound(roundId: number): Promise<RoundCore> {
-  const c = await generateVerified('round:' + roundId, { min: 2, max: 4 });
+  const c = await generateVerified('round:' + roundId, { min: 3, max: 5 });
   const [s, t] = await Promise.all([
     getArtistBrief(c.start.id),
     getArtistBrief(c.target.id),
