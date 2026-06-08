@@ -187,7 +187,7 @@ if (existsSync(webIndex)) {
 
 app.listen(PORT, () => {
   console.log(`music-wiki-game server listening on http://localhost:${PORT}`);
-  // Keep the current + next global round generated ahead of time so
+  // Keep the current + upcoming global rounds generated ahead of time so
   // /api/round/current is always instant and rotates smoothly.
   ensureRounds()
     .then(() => currentRound())

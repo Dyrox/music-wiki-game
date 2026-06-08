@@ -1,5 +1,5 @@
 import { TTLCache } from './cache.js';
-import { ROUND_MS } from './config.js';
+import { ROUND_MS, ROUND_PREFETCH_COUNT } from './config.js';
 import { generateVerified } from './challenge.js';
 import { getArtistBrief } from './artist.js';
 
@@ -23,8 +23,9 @@ export interface Round extends RoundCore {
   serverNow: number;
 }
 
-// Rounds rotate by id, so a short-ish TTL plus the id key is enough.
-const cache = new TTLCache<RoundCore>(2 * ROUND_MS, 50);
+// Keep prefetched rounds alive until they become current.
+const cache = new TTLCache<RoundCore>((ROUND_PREFETCH_COUNT + 2) * ROUND_MS, 50);
+let ensuring = false;
 
 export function roundIdFor(t: number = Date.now()): number {
   return Math.floor(t / ROUND_MS);
@@ -51,6 +52,7 @@ function getRound(roundId: number): Promise<RoundCore> {
 export async function currentRound(): Promise<Round> {
   const roundId = roundIdFor();
   const core = await getRound(roundId);
+  void ensureRounds(); // keep future rounds warm after serving the current one
   return {
     ...core,
     durationMs: ROUND_MS,
@@ -60,11 +62,22 @@ export async function currentRound(): Promise<Round> {
   };
 }
 
-/** Make sure the current and next rounds are generated ahead of time. */
+/** Make sure the current and upcoming rounds are generated ahead of time. */
 export async function ensureRounds(): Promise<void> {
+  if (ensuring) return;
+  ensuring = true;
   const id = roundIdFor();
-  await getRound(id).catch((e) =>
-    console.error('[round] build current failed:', (e as Error)?.message ?? e),
-  );
-  void getRound(id + 1).catch(() => {}); // next, in the background
+  try {
+    for (let i = 0; i <= ROUND_PREFETCH_COUNT; i++) {
+      const roundId = id + i;
+      await getRound(roundId).catch((e) =>
+        console.error(
+          `[round] build #${roundId} failed:`,
+          (e as Error)?.message ?? e,
+        ),
+      );
+    }
+  } finally {
+    ensuring = false;
+  }
 }

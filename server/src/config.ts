@@ -19,6 +19,7 @@ export const BFS_NEIGHBOR_CAP = Number(process.env.BFS_NEIGHBOR_CAP ?? 14);
 
 // Global timed-round length (The-Wiki-Game style): a new shared puzzle every N ms.
 export const ROUND_MS = Number(process.env.ROUND_MS ?? 3 * 60 * 1000);
+export const ROUND_PREFETCH_COUNT = Number(process.env.ROUND_PREFETCH_COUNT ?? 4);
 
 // Cache TTL — artist discographies barely change.
 export const ARTIST_TTL_MS = Number(process.env.ARTIST_TTL_MS ?? 6 * 60 * 60 * 1000);

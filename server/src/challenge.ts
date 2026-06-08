@@ -143,9 +143,10 @@ export async function generateSeeded(
 }
 
 /**
- * Like generateSeeded, but verifies the TRUE shortest distance over the full
- * graph (the cheap generator over-estimates), reports it as minMoves, and skips
- * pairs that turn out trivially close (< range.min) so puzzles aren't 1-steppers.
+ * Like generateSeeded, but cheaply rejects pairs that are too close. Full
+ * shortest-path verification can take many upstream calls for 5-step puzzles,
+ * which blocks timed-round rotation; checking only depths below `range.min`
+ * keeps the "not a trivial puzzle" guarantee without making users wait.
  */
 export async function generateVerified(
   key: string,
@@ -153,7 +154,6 @@ export async function generateVerified(
 ): Promise<SeededResult> {
   const rng = mulberry32(hashStr(key));
   const order = [...SEEDS].sort(() => rng() - 0.5);
-  let fallback: SeededResult | null = null;
 
   for (const seed of order) {
     const res = await generateFromStart(seed.id, seed.name, rng, {
@@ -168,16 +168,21 @@ export async function generateVerified(
       minMoves: res.minMoves,
     };
 
-    const d = await shortestDistance(res.start.id, res.target.id, range.max + 1);
-    if (d !== null) {
-      if (d >= range.min) return { ...candidate, minMoves: d }; // honest & non-trivial
-      continue; // trivially close — try another start
+    if (range.min > 1) {
+      const tooClose = await shortestDistance(
+        res.start.id,
+        res.target.id,
+        range.min - 1,
+        1,
+        2,
+      );
+      if (tooClose !== null) continue;
     }
-    // couldn't verify within budget — keep the cheap estimate as a fallback
-    if (!fallback) fallback = candidate;
+
+    return candidate;
   }
 
-  return fallback ?? generateSeeded(key, range);
+  return generateSeeded(key, range);
 }
 
 export async function dailyChallenge(date = todayStr()): Promise<Challenge> {
