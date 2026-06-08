@@ -186,22 +186,25 @@ app.post('/api/room/leave', (req, res) => {
 });
 
 app.post('/api/room/complete', (req, res) => {
-  const { clientId, name, start, target, moves, timeMs } = req.body ?? {};
+  const { clientId, name, start, target, moves, timeMs, dq } = req.body ?? {};
   if (
     typeof clientId === 'string' &&
     Number.isFinite(start) &&
     Number.isFinite(target) &&
     Number.isFinite(moves)
   ) {
-    complete(
+    const result = complete(
       clientId,
       typeof name === 'string' ? name : '',
       roomKey(Number(start), Number(target)),
       Number(moves),
       Number(timeMs) || 0,
+      dq === true,
     );
+    res.json({ ok: true, ...result });
+    return;
   }
-  res.json({ ok: true });
+  res.json({ ok: true, rank: null, total: 0 });
 });
 
 // A random recognizable artist from the seed pool — backs the 🎲 dice in the

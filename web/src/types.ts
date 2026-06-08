@@ -104,6 +104,12 @@ export interface RoundResultEntry {
   moves: number;
   timeMs: number;
   bot?: boolean;
+  dq?: boolean;
+}
+
+export interface CompleteResult {
+  rank: number | null;
+  total: number;
 }
 
 export interface RoomState {

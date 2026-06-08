@@ -46,6 +46,7 @@ export function GameHud({
     : elapsed((state.endTime ?? now) - state.startTime);
 
   async function loadHint(reveal: boolean) {
+    dispatch({ type: 'useHelp' }); // using a hint / route disqualifies this round
     setHint({ loading: true, reveal });
     try {
       const res = await api.path(cur.id, state.target.id);
@@ -72,6 +73,14 @@ export function GameHud({
           <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium">
             {modeLabel[state.mode]}
           </span>
+          {state.usedHelp && (
+            <span
+              className="rounded-full bg-amber-400/90 px-2.5 py-0.5 text-xs font-medium text-black"
+              title="本局使用了提示或看了路线，不计入排行榜排名"
+            >
+              🚫 已用提示 · 不计排名
+            </span>
+          )}
 
           <div className="flex items-center gap-2 text-sm">
             <Endpoint label="起点" name={state.start.name} tone="start" />
@@ -88,8 +97,12 @@ export function GameHud({
             />
             <Stat label={timeLabel} value={time} mono />
             <div className="flex items-center gap-2">
-              <Btn onClick={() => loadHint(false)}>提示</Btn>
-              <Btn onClick={() => loadHint(true)}>看路线</Btn>
+              <Btn onClick={() => loadHint(false)} title="使用后本局不计入排名">
+                提示
+              </Btn>
+              <Btn onClick={() => loadHint(true)} title="使用后本局不计入排名">
+                看路线
+              </Btn>
               <Btn onClick={() => dispatch({ type: 'restart' })}>重开</Btn>
               <Btn onClick={() => dispatch({ type: 'exit' })} ghost>
                 退出
@@ -191,14 +204,17 @@ function Btn({
   children,
   onClick,
   ghost,
+  title,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   ghost?: boolean;
+  title?: string;
 }) {
   return (
     <button
       onClick={onClick}
+      title={title}
       className={`rounded-full px-3 py-1 text-xs font-medium transition ${
         ghost
           ? 'text-white/60 hover:bg-white/10 hover:text-white'

@@ -15,6 +15,8 @@ export interface GameState {
   path: ArtistRef[];
   startTime: number;
   endTime: number | null;
+  /** used a hint or saw the route → disqualified from the ranking this round */
+  usedHelp: boolean;
 }
 
 export const initialState: GameState = {
@@ -26,6 +28,7 @@ export const initialState: GameState = {
   path: [],
   startTime: 0,
   endTime: null,
+  usedHelp: false,
 };
 
 export type Action =
@@ -41,6 +44,7 @@ export type Action =
     }
   | { type: 'travel'; artist: ArtistRef }
   | { type: 'jumpTo'; index: number }
+  | { type: 'useHelp' }
   | { type: 'timeout' }
   | { type: 'restart' }
   | { type: 'exit' };
@@ -60,7 +64,11 @@ export function reducer(state: GameState, action: Action): GameState {
         path: [action.start],
         startTime: Date.now(),
         endTime: null,
+        usedHelp: false,
       };
+
+    case 'useHelp':
+      return state.usedHelp ? state : { ...state, usedHelp: true };
 
     case 'travel': {
       if (state.phase !== 'playing') return state;

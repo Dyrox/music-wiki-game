@@ -20,6 +20,12 @@ export interface RoundResult {
   moves: number;
   timeMs: number;
   bot?: boolean;
+  dq?: boolean; // used a hint / saw the route → disqualified, not ranked
+}
+
+export interface CompleteResult {
+  rank: number | null; // 1-based place among clean finishers; null if disqualified
+  total: number; // number of clean (non-dq) finishers in the room
 }
 
 interface RealPlayer {
@@ -69,26 +75,44 @@ export function leave(clientId: string): void {
   if (clientId) realPlayers.delete(clientId);
 }
 
+/** A clean run beats a disqualified one; then fewer moves; then faster. */
+function betterResult(a: RoundResult, b: RoundResult): boolean {
+  const ad = a.dq ? 1 : 0;
+  const bd = b.dq ? 1 : 0;
+  if (ad !== bd) return ad < bd;
+  if (a.moves !== b.moves) return a.moves < b.moves;
+  return a.timeMs < b.timeMs;
+}
+
 export function complete(
   clientId: string,
   name: string,
   room: string,
   moves: number,
   timeMs: number,
-): void {
-  if (!clientId || !room) return;
+  dq = false,
+): CompleteResult {
+  if (!clientId || !room) return { rank: null, total: 0 };
   let m = realResults.get(room);
   if (!m) {
     m = new Map();
     realResults.set(room, m);
   }
+  const next: RoundResult = { name: name || clientId, moves, timeMs, dq };
   const prev = m.get(clientId);
-  // keep the best attempt (fewer moves, then faster)
-  if (!prev || moves < prev.moves || (moves === prev.moves && timeMs < prev.timeMs)) {
-    m.set(clientId, { name: name || clientId, moves, timeMs });
-  }
+  if (!prev || betterResult(next, prev)) m.set(clientId, next);
+
   const p = realPlayers.get(clientId);
   if (p && p.room === room) p.status = 'done';
+
+  // place among clean (non-dq) finishers
+  const ranked = [...m.values()]
+    .filter((r) => !r.dq)
+    .sort((a, b) => a.moves - b.moves || a.timeMs - b.timeMs);
+  const cur = m.get(clientId)!;
+  if (cur.dq) return { rank: null, total: ranked.length };
+  const idx = ranked.findIndex((r) => r === cur);
+  return { rank: idx >= 0 ? idx + 1 : null, total: ranked.length };
 }
 
 // ---- deterministic bots ----
@@ -178,8 +202,11 @@ export function roomState(room: string, minMoves = 0): RoomState {
   if (real) for (const [cid, r] of real) resultMap.set(cid, r);
 
   const results = [...resultMap.values()]
-    .sort((a, b) => a.moves - b.moves || a.timeMs - b.timeMs)
-    .slice(0, 15);
+    .sort(
+      (a, b) =>
+        (a.dq ? 1 : 0) - (b.dq ? 1 : 0) || a.moves - b.moves || a.timeMs - b.timeMs,
+    )
+    .slice(0, 20);
 
   // online: bots still "playing" + real players active in this room (not done),
   // de-duped by clientId (so renaming never doubles you up)

@@ -42,6 +42,13 @@ export function LeaderboardPanel() {
   const online = state?.online ?? [];
   const results = state?.results ?? [];
 
+  // disqualified entries (used a hint) still show, but don't take a place
+  let place = 0;
+  const ranked = results.map((r) => {
+    if (!r.dq) place++;
+    return { ...r, place: r.dq ? null : place };
+  });
+
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
@@ -69,17 +76,27 @@ export function LeaderboardPanel() {
           results.length === 0 ? (
             <Empty text="还没有人通关本轮，快去抢第一！" />
           ) : (
-            results.map((r, i) => (
-              <Row key={r.name} highlight={r.name === me}>
-                <span className="w-7 shrink-0 text-sm tabular-nums text-gray-400">
-                  #{i + 1}
+            ranked.map((r, i) => (
+              <Row key={`${r.name}-${i}`} highlight={r.name === me}>
+                <span className="w-7 shrink-0 text-center text-sm tabular-nums text-gray-400">
+                  {r.place == null ? (
+                    <span title="使用了提示，不计排名">🚫</span>
+                  ) : (
+                    `#${r.place}`
+                  )}
                 </span>
                 <span className="flex-1 truncate text-sm font-medium text-gray-800">
                   {r.name}
                   {r.name === me && <Me />}
                 </span>
                 <span className="shrink-0 text-xs text-gray-400">
-                  <b className="text-gray-700">{r.moves}</b> 步 · {elapsed(r.timeMs)}
+                  {r.dq ? (
+                    '已用提示'
+                  ) : (
+                    <>
+                      <b className="text-gray-700">{r.moves}</b> 步 · {elapsed(r.timeMs)}
+                    </>
+                  )}
                 </span>
               </Row>
             ))

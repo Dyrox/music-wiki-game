@@ -3,6 +3,7 @@ import type {
   ArtistData,
   ArtistDesc,
   Challenge,
+  CompleteResult,
   Mv,
   PathResult,
   Round,
@@ -88,7 +89,15 @@ export const api = {
     target: number,
     moves: number,
     timeMs: number,
-  ) => postJSON(apiPath(`/room/complete`), { clientId, name, start, target, moves, timeMs }),
+    dq: boolean,
+  ): Promise<CompleteResult> =>
+    fetch(apiPath(`/room/complete`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientId, name, start, target, moves, timeMs, dq }),
+    })
+      .then((r) => r.json() as Promise<CompleteResult>)
+      .catch(() => ({ rank: null, total: 0 })),
   path: (from: number, to: number) =>
     getJSON<PathResult>(apiPath(`/path?from=${from}&to=${to}&maxDepth=6`)),
 };

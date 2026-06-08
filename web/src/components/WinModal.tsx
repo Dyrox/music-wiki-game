@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Action, GameState } from '../game';
 import { moveCount } from '../game';
 import { elapsed } from '../format';
+import type { CompleteResult } from '../types';
 
 const modeName: Record<string, string> = {
   free: '自由模式',
@@ -13,9 +14,11 @@ const modeName: Record<string, string> = {
 export function WinModal({
   state,
   dispatch,
+  result,
 }: {
   state: GameState;
   dispatch: React.Dispatch<Action>;
+  result: CompleteResult | null;
 }) {
   const [copied, setCopied] = useState(false);
   const moves = moveCount(state);
@@ -68,6 +71,19 @@ export function WinModal({
           <div className="mb-1 text-xs font-medium text-gray-400">你的路线</div>
           <div className="text-sm leading-relaxed text-gray-700">{pathStr}</div>
         </div>
+
+        {state.usedHelp ? (
+          <div className="mt-4 rounded-xl bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
+            🚫 本局使用了提示 / 看了路线 · 不计入排名
+          </div>
+        ) : result && result.rank ? (
+          <div className="mt-4 rounded-xl bg-nred/5 px-4 py-2.5 text-sm text-gray-700">
+            🏅 本房间第 <b className="text-nred">{result.rank}</b> 名
+            {result.total > 1 && (
+              <span className="text-gray-400"> · 共 {result.total} 人通关</span>
+            )}
+          </div>
+        ) : null}
 
         <div className="mt-6 flex gap-3">
           <button

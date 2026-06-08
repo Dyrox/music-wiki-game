@@ -1,6 +1,7 @@
-import { useEffect, useReducer, useRef } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { initialState, reducer, currentArtist, moveCount } from './game';
 import { api, leaveBeacon } from './api';
+import type { CompleteResult } from './types';
 import { getClientId, useUsername } from './player';
 import { SetupScreen } from './components/SetupScreen';
 import { TopBar } from './components/TopBar';
@@ -14,6 +15,7 @@ export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const me = useUsername();
   const reported = useRef(false);
+  const [myResult, setMyResult] = useState<CompleteResult | null>(null);
 
   // Tell the server we're gone the moment the tab closes, so other players see
   // us drop off in ~1.5s instead of waiting for the presence timeout.
@@ -34,6 +36,7 @@ export default function App() {
     if (!state.start.id || !state.target.id) return;
     if (state.phase === 'playing') {
       reported.current = false;
+      setMyResult(null);
       const beat = () =>
         api.heartbeat(getClientId(), me, state.start.id, state.target.id, 'playing');
       beat();
@@ -42,14 +45,17 @@ export default function App() {
     }
     if (state.phase === 'won' && !reported.current) {
       reported.current = true;
-      api.complete(
-        getClientId(),
-        me,
-        state.start.id,
-        state.target.id,
-        moveCount(state),
-        (state.endTime ?? Date.now()) - state.startTime,
-      );
+      api
+        .complete(
+          getClientId(),
+          me,
+          state.start.id,
+          state.target.id,
+          moveCount(state),
+          (state.endTime ?? Date.now()) - state.startTime,
+          state.usedHelp,
+        )
+        .then(setMyResult);
     }
   }, [state.phase, state.start.id, state.target.id, me]);
 
@@ -99,7 +105,9 @@ export default function App() {
       {state.start.id > 0 && state.target.id > 0 && (
         <RoundLivePanel startId={state.start.id} targetId={state.target.id} />
       )}
-      {state.phase === 'won' && <WinModal state={state} dispatch={dispatch} />}
+      {state.phase === 'won' && (
+        <WinModal state={state} dispatch={dispatch} result={myResult} />
+      )}
       {state.phase === 'lost' && <LostModal state={state} dispatch={dispatch} />}
     </div>
   );

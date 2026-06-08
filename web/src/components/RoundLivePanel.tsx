@@ -47,7 +47,17 @@ export function RoundLivePanel({
   const online = state?.online ?? [];
   const results = state?.results ?? [];
   const onlineCount = state?.onlineCount ?? 0;
-  const playing = online.filter((p) => p.status === 'playing').length;
+
+  // Assign places to clean finishers; disqualified ones still appear in the
+  // list (marked 🚫) but don't take a place.
+  let place = 0;
+  const finishers = results.map((r) => {
+    const ranked = !r.dq;
+    if (ranked) place++;
+    return { ...r, place: ranked ? place : null };
+  });
+  const arrived = place;
+  const empty = finishers.length === 0 && online.length === 0;
 
   return (
     <div className="fixed bottom-4 right-4 z-40 w-[262px] max-w-[calc(100vw-2rem)]">
@@ -68,53 +78,78 @@ export function RoundLivePanel({
           <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-2 text-xs text-gray-500">
             <span className="flex items-center gap-1">
               <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-              {onlineCount} 在线
+              {onlineCount} 在玩
             </span>
-            <span className="flex items-center gap-1">🎮 {playing} 在玩</span>
-            {results.length > 0 && (
-              <span className="ml-auto">🏁 {results.length} 已抵达</span>
-            )}
+            {arrived > 0 && <span className="ml-auto">🏁 {arrived} 已抵达</span>}
           </div>
 
-          {/* finishers, ranked */}
-          <div className="no-scrollbar max-h-[260px] overflow-y-auto">
-            {results.length === 0 ? (
+          {/* everyone in the room: finishers (ranked) on top, then who's still going */}
+          <div className="no-scrollbar max-h-[300px] overflow-y-auto">
+            {empty ? (
               <div className="px-4 py-7 text-center text-xs leading-relaxed text-gray-400">
                 还没有人抵达终点
                 <br />
                 抢下第一个 🚩
               </div>
             ) : (
-              results.map((r, i) => {
-                const mine = r.name === me;
-                return (
-                  <div
-                    key={`${r.name}-${i}`}
-                    className={`flex items-center gap-2.5 px-4 py-2 ${
-                      mine ? 'bg-nred/5' : 'odd:bg-gray-50/60'
-                    }`}
-                  >
-                    <span className="w-6 shrink-0 text-center text-sm">
-                      {i < 3 ? (
-                        MEDAL[i]
-                      ) : (
-                        <span className="text-xs tabular-nums text-gray-400">#{i + 1}</span>
-                      )}
-                    </span>
-                    <span className="flex-1 truncate text-[13px] font-medium text-gray-800">
-                      {r.name}
-                      {mine && (
-                        <span className="ml-1.5 rounded bg-nred px-1.5 py-0.5 text-[10px] font-bold text-white">
-                          你
-                        </span>
-                      )}
-                    </span>
-                    <span className="shrink-0 text-[11px] tabular-nums text-gray-400">
-                      <b className="text-gray-700">{r.moves}</b> 步 · {elapsed(r.timeMs)}
-                    </span>
-                  </div>
-                );
-              })
+              <>
+                {finishers.map((f, i) => {
+                  const mine = f.name === me;
+                  return (
+                    <div
+                      key={`f-${f.name}-${i}`}
+                      className={`flex items-center gap-2.5 px-4 py-2 ${
+                        mine ? 'bg-nred/5' : 'odd:bg-gray-50/60'
+                      }`}
+                    >
+                      <span className="w-7 shrink-0 text-center text-sm">
+                        {f.place == null ? (
+                          <span title="使用了提示，不计排名">🚫</span>
+                        ) : f.place <= 3 ? (
+                          MEDAL[f.place - 1]
+                        ) : (
+                          <span className="text-xs tabular-nums text-gray-400">
+                            #{f.place}
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex-1 truncate text-[13px] font-medium text-gray-800">
+                        {f.name}
+                        {mine && <Me />}
+                      </span>
+                      <span className="shrink-0 text-[11px] tabular-nums text-gray-400">
+                        {f.dq ? (
+                          <span className="text-gray-400">已用提示</span>
+                        ) : (
+                          <>
+                            <b className="text-gray-700">{f.moves}</b> 步 · {elapsed(f.timeMs)}
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
+                {online.map((p, i) => {
+                  const mine = p.name === me;
+                  return (
+                    <div
+                      key={`o-${p.name}-${i}`}
+                      className={`flex items-center gap-2.5 px-4 py-2 ${
+                        mine ? 'bg-nred/5' : 'odd:bg-gray-50/60'
+                      }`}
+                    >
+                      <span className="w-7 shrink-0 text-center text-sm text-gray-300">·</span>
+                      <span className="flex-1 truncate text-[13px] font-medium text-gray-700">
+                        {p.name}
+                        {mine && <Me />}
+                      </span>
+                      <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-700">
+                        {p.status === 'playing' ? '赶路中' : '浏览中'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </>
             )}
           </div>
         </div>
@@ -131,5 +166,13 @@ export function RoundLivePanel({
         </button>
       )}
     </div>
+  );
+}
+
+function Me() {
+  return (
+    <span className="ml-1.5 rounded bg-nred px-1.5 py-0.5 text-[10px] font-bold text-white">
+      你
+    </span>
   );
 }
