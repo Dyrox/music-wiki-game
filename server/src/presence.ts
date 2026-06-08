@@ -1,10 +1,10 @@
-import { ROUND_MS } from './config.js';
-
 /**
- * Lightweight, in-memory "who's playing right now" + per-round results, in the
- * spirit of The Wiki Game's lobby. Real visitors are tracked via heartbeats;
- * a handful of deterministic bots per round keep the board lively (toggle with
- * env BOTS=off). Everything resets on server restart — no DB, prototype-grade.
+ * Lightweight, in-memory "who's playing right now" + per-room results, in the
+ * spirit of The Wiki Game's lobby. A "room" is a start→target pair (see
+ * `roomKey`): everyone attempting the same pair — whether from the timed round
+ * or from custom/free mode — competes on the same board. Real visitors are
+ * tracked via heartbeats; deterministic bots per room can keep the board lively
+ * (opt-in via env BOTS=on). Everything resets on server restart — no DB.
  */
 
 export type PlayerStatus = 'browsing' | 'playing' | 'done';
@@ -25,7 +25,7 @@ export interface RoundResult {
 interface RealPlayer {
   clientId: string;
   name: string;
-  roundId: number;
+  room: string;
   status: PlayerStatus;
   lastSeen: number;
 }
@@ -37,16 +37,31 @@ const BOTS_ENABLED = (process.env.BOTS ?? 'off') === 'on';
 // Keyed by a stable per-browser clientId (NOT the display name) so renaming
 // updates the same player instead of creating a duplicate.
 const realPlayers = new Map<string, RealPlayer>(); // key: clientId
-const realResults = new Map<number, Map<string, RoundResult>>(); // roundId -> clientId -> result
+const realResults = new Map<string, Map<string, RoundResult>>(); // room -> clientId -> result
+
+/**
+ * Competition room key. The same start→target pair shares one room, so custom
+ * mode and the timed round merge when they happen to pick the same pair.
+ * Direction matters (A→B is a different challenge than B→A).
+ */
+export function roomKey(startId: number, targetId: number): string {
+  return `${startId}-${targetId}`;
+}
 
 export function heartbeat(
   clientId: string,
   name: string,
-  roundId: number,
+  room: string,
   status: PlayerStatus,
 ): void {
-  if (!clientId) return;
-  realPlayers.set(clientId, { clientId, name: name || clientId, roundId, status, lastSeen: Date.now() });
+  if (!clientId || !room) return;
+  realPlayers.set(clientId, {
+    clientId,
+    name: name || clientId,
+    room,
+    status,
+    lastSeen: Date.now(),
+  });
 }
 
 /** Remove a player immediately (sent on tab close via sendBeacon). */
@@ -57,15 +72,15 @@ export function leave(clientId: string): void {
 export function complete(
   clientId: string,
   name: string,
-  roundId: number,
+  room: string,
   moves: number,
   timeMs: number,
 ): void {
-  if (!clientId) return;
-  let m = realResults.get(roundId);
+  if (!clientId || !room) return;
+  let m = realResults.get(room);
   if (!m) {
     m = new Map();
-    realResults.set(roundId, m);
+    realResults.set(room, m);
   }
   const prev = m.get(clientId);
   // keep the best attempt (fewer moves, then faster)
@@ -73,7 +88,7 @@ export function complete(
     m.set(clientId, { name: name || clientId, moves, timeMs });
   }
   const p = realPlayers.get(clientId);
-  if (p) p.status = 'done';
+  if (p && p.room === room) p.status = 'done';
 }
 
 // ---- deterministic bots ----
@@ -85,6 +100,15 @@ const NOUN = [
   'Meerkat', 'Tiger', 'Ninja', 'Rogue', 'Rider', 'Builder', 'Guru', 'Comet',
   'Scout', 'Falcon', 'Otter', 'Maple', 'Panda', 'Sparrow', 'Yak', 'Lynx',
 ];
+
+function hashStr(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
 
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
@@ -101,13 +125,14 @@ interface Bot {
   name: string;
   moves: number;
   timeMs: number;
-  finishAt: number; // ms offset into the round when they "finish"
+  done: boolean;
 }
 
-function botsForRound(roundId: number, minMoves: number): Bot[] {
+function botsForRoom(room: string, minMoves: number): Bot[] {
   if (!BOTS_ENABLED) return [];
-  const rng = mulberry32((roundId ^ 0x9e3779b9) >>> 0);
+  const rng = mulberry32(hashStr('room:' + room));
   const count = 5 + Math.floor(rng() * 6); // 5–10
+  const base = minMoves > 0 ? minMoves : 3;
   const used = new Set<string>();
   const bots: Bot[] = [];
   for (let i = 0; i < count; i++) {
@@ -120,37 +145,34 @@ function botsForRound(roundId: number, minMoves: number): Bot[] {
       if (!used.has(name)) break;
     }
     used.add(name);
-    const moves = minMoves + (rng() < 0.45 ? 0 : rng() < 0.7 ? 1 : 2);
+    const moves = base + (rng() < 0.45 ? 0 : rng() < 0.7 ? 1 : 2);
     const timeMs = Math.floor((8 + rng() * 130) * 1000); // 8s–138s
-    const finishAt = Math.floor(rng() * ROUND_MS * 0.92);
-    bots.push({ name, moves, timeMs, finishAt });
+    bots.push({ name, moves, timeMs, done: rng() < 0.7 });
   }
   return bots;
 }
 
-export interface RoundState {
+export interface RoomState {
   online: LivePlayer[];
   results: RoundResult[];
   onlineCount: number;
 }
 
-export function roundState(roundId: number, minMoves: number, startsAt: number): RoundState {
+export function roomState(room: string, minMoves = 0): RoomState {
   const now = Date.now();
-  const elapsed = Math.max(0, now - startsAt);
 
   // prune stale real players
   for (const [k, p] of realPlayers) {
     if (now - p.lastSeen > ONLINE_TTL) realPlayers.delete(k);
   }
 
-  const bots = botsForRound(roundId, minMoves);
-
-  const real = realResults.get(roundId);
+  const bots = botsForRoom(room, minMoves);
+  const real = realResults.get(room);
 
   // results: real completes (keyed by clientId) + bots that have "finished"
   const resultMap = new Map<string, RoundResult>();
   for (const b of bots) {
-    if (b.finishAt <= elapsed)
+    if (b.done)
       resultMap.set('bot:' + b.name, { name: b.name, moves: b.moves, timeMs: b.timeMs, bot: true });
   }
   if (real) for (const [cid, r] of real) resultMap.set(cid, r);
@@ -159,19 +181,19 @@ export function roundState(roundId: number, minMoves: number, startsAt: number):
     .sort((a, b) => a.moves - b.moves || a.timeMs - b.timeMs)
     .slice(0, 15);
 
-  // online: bots still "playing" + real players active in this round (not done),
+  // online: bots still "playing" + real players active in this room (not done),
   // de-duped by clientId (so renaming never doubles you up)
   const online: LivePlayer[] = [];
   const seen = new Set<string>();
   for (const b of bots) {
     const key = 'bot:' + b.name;
-    if (b.finishAt > elapsed && !seen.has(key)) {
+    if (!b.done && !seen.has(key)) {
       seen.add(key);
       online.push({ name: b.name, status: 'playing', bot: true });
     }
   }
   for (const p of realPlayers.values()) {
-    if (p.roundId !== roundId || seen.has(p.clientId)) continue;
+    if (p.room !== room || seen.has(p.clientId)) continue;
     if (p.status === 'done' && real?.has(p.clientId)) continue; // already in results
     seen.add(p.clientId);
     online.push({ name: p.name, status: p.status });

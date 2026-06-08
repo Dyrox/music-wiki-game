@@ -6,6 +6,7 @@ import type {
   Mv,
   PathResult,
   Round,
+  RoomState,
   RoundState,
   SearchArtist,
 } from './types';
@@ -39,8 +40,8 @@ function postJSON(url: string, body: unknown): void {
 export function leaveBeacon(clientId: string): void {
   try {
     const blob = new Blob([JSON.stringify({ clientId })], { type: 'application/json' });
-    if (!navigator.sendBeacon?.(apiPath('/round/leave'), blob)) {
-      postJSON(apiPath('/round/leave'), { clientId });
+    if (!navigator.sendBeacon?.(apiPath('/room/leave'), blob)) {
+      postJSON(apiPath('/room/leave'), { clientId });
     }
   } catch {
     /* ignore */
@@ -70,19 +71,24 @@ export const api = {
   random: () => getJSON<Challenge>(apiPath(`/challenge/random`)),
   round: () => getJSON<Round>(apiPath(`/round/current`)),
   roundState: () => getJSON<RoundState>(apiPath(`/round/state`)),
+  roomState: (start: number, target: number) =>
+    getJSON<RoomState>(apiPath(`/room/state?start=${start}&target=${target}`)),
+  randomArtist: () => getJSON<SearchArtist>(apiPath(`/random-artist`)),
   heartbeat: (
     clientId: string,
     name: string,
-    roundId: number,
+    start: number,
+    target: number,
     status: 'browsing' | 'playing',
-  ) => postJSON(apiPath(`/round/heartbeat`), { clientId, name, roundId, status }),
+  ) => postJSON(apiPath(`/room/heartbeat`), { clientId, name, start, target, status }),
   complete: (
     clientId: string,
     name: string,
-    roundId: number,
+    start: number,
+    target: number,
     moves: number,
     timeMs: number,
-  ) => postJSON(apiPath(`/round/complete`), { clientId, name, roundId, moves, timeMs }),
+  ) => postJSON(apiPath(`/room/complete`), { clientId, name, start, target, moves, timeMs }),
   path: (from: number, to: number) =>
     getJSON<PathResult>(apiPath(`/path?from=${from}&to=${to}&maxDepth=6`)),
 };

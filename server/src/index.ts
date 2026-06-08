@@ -4,12 +4,20 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PORT, WEB_DIST_DIR } from './config.js';
-import { getArtist, getArtistWithTarget, getAlbums, getMvs, getDesc } from './artist.js';
+import {
+  getArtist,
+  getArtistWithTarget,
+  getArtistBrief,
+  getAlbums,
+  getMvs,
+  getDesc,
+} from './artist.js';
 import { searchArtists } from './search.js';
 import { findPath, shortestDistance } from './game.js';
 import { dailyChallenge, randomChallenge } from './challenge.js';
 import { currentRound, ensureRounds } from './rounds.js';
-import { heartbeat, complete, leave, roundState } from './presence.js';
+import { heartbeat, complete, leave, roomState, roomKey } from './presence.js';
+import { SEEDS } from './seeds.js';
 
 const defaultWebDist = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -136,48 +144,86 @@ app.get(
   }),
 );
 
-// Lobby state: the current round + who's playing right now + round results.
+// Lobby state: the current round + who's competing on its start→target room.
 app.get(
   '/api/round/state',
   asyncRoute(async (_req, res) => {
     const round = await currentRound();
-    const state = roundState(round.roundId, round.minMoves, round.startsAt);
+    const state = roomState(roomKey(round.start.id, round.target.id), round.minMoves);
     res.json({ round, ...state });
   }),
 );
 
-app.post('/api/round/heartbeat', (req, res) => {
-  const { clientId, name, roundId, status } = req.body ?? {};
-  if (typeof clientId === 'string' && Number.isFinite(roundId)) {
+// Generic competition room: everyone on the same start→target pair (round OR
+// custom mode) shares one leaderboard.
+app.get('/api/room/state', (req, res) => {
+  const start = Number(req.query.start);
+  const target = Number(req.query.target);
+  if (!Number.isFinite(start) || !Number.isFinite(target)) {
+    res.status(400).json({ error: 'bad start/target' });
+    return;
+  }
+  res.json(roomState(roomKey(start, target)));
+});
+
+app.post('/api/room/heartbeat', (req, res) => {
+  const { clientId, name, start, target, status } = req.body ?? {};
+  if (typeof clientId === 'string' && Number.isFinite(start) && Number.isFinite(target)) {
     heartbeat(
       clientId,
       typeof name === 'string' ? name : '',
-      Number(roundId),
+      roomKey(Number(start), Number(target)),
       status === 'playing' ? 'playing' : 'browsing',
     );
   }
   res.json({ ok: true });
 });
 
-app.post('/api/round/leave', (req, res) => {
+app.post('/api/room/leave', (req, res) => {
   const { clientId } = req.body ?? {};
   if (typeof clientId === 'string') leave(clientId);
   res.json({ ok: true });
 });
 
-app.post('/api/round/complete', (req, res) => {
-  const { clientId, name, roundId, moves, timeMs } = req.body ?? {};
-  if (typeof clientId === 'string' && Number.isFinite(roundId) && Number.isFinite(moves)) {
+app.post('/api/room/complete', (req, res) => {
+  const { clientId, name, start, target, moves, timeMs } = req.body ?? {};
+  if (
+    typeof clientId === 'string' &&
+    Number.isFinite(start) &&
+    Number.isFinite(target) &&
+    Number.isFinite(moves)
+  ) {
     complete(
       clientId,
       typeof name === 'string' ? name : '',
-      Number(roundId),
+      roomKey(Number(start), Number(target)),
       Number(moves),
       Number(timeMs) || 0,
     );
   }
   res.json({ ok: true });
 });
+
+// A random recognizable artist from the seed pool — backs the 🎲 dice in the
+// custom-mode start/target pickers.
+app.get(
+  '/api/random-artist',
+  asyncRoute(async (_req, res) => {
+    const seed = SEEDS[Math.floor(Math.random() * SEEDS.length)];
+    const brief = await getArtistBrief(seed.id).catch(() => ({
+      id: seed.id,
+      name: seed.name,
+      picUrl: '',
+    }));
+    res.json({
+      id: seed.id,
+      name: seed.name || brief.name,
+      picUrl: brief.picUrl,
+      alias: [],
+      musicSize: 0,
+    });
+  }),
+);
 
 if (existsSync(webIndex)) {
   app.use(express.static(webDist));

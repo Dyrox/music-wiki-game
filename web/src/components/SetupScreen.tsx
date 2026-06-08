@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { SearchArtist } from '../types';
 import type { GameMode } from '../game';
+import { api } from '../api';
 import { SearchPicker } from './SearchPicker';
 import { RoundCard } from './RoundCard';
 import { LeaderboardPanel } from './LeaderboardPanel';
@@ -20,6 +21,19 @@ export function SetupScreen({
 }) {
   const [start, setStart] = useState<SearchArtist | null>(null);
   const [target, setTarget] = useState<SearchArtist | null>(null);
+  const [rolling, setRolling] = useState<'start' | 'target' | null>(null);
+
+  async function roll(which: 'start' | 'target') {
+    setRolling(which);
+    try {
+      const a = await api.randomArtist();
+      (which === 'start' ? setStart : setTarget)(a);
+    } catch {
+      /* ignore */
+    } finally {
+      setRolling(null);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-[1040px] px-6 py-10">
@@ -62,12 +76,16 @@ export function SetupScreen({
               selected={start}
               onPick={setStart}
               placeholder="例如：Dyrox"
+              onRoll={() => roll('start')}
+              rolling={rolling === 'start'}
             />
             <SearchPicker
               label="终点歌手"
               selected={target}
               onPick={setTarget}
               placeholder="例如：Alan Walker"
+              onRoll={() => roll('target')}
+              rolling={rolling === 'target'}
             />
           </div>
           <button

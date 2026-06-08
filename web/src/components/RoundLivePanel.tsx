@@ -2,20 +2,27 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useUsername } from '../player';
 import { elapsed } from '../format';
-import type { RoundState } from '../types';
+import type { RoomState } from '../types';
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 
 /**
  * In-game live standings, The-Wiki-Game style: a floating, collapsible card on
- * the play page that shows how many people are in this round right now and who
- * has already reached the target (ranked 1st/2nd/3rd… by moves, then time).
+ * the play page that shows how many people are on this start→target pair right
+ * now and who has already reached the target (ranked 1st/2nd/3rd… by moves,
+ * then time). Keyed by the pair, so round and custom mode share a board.
  *
  * Read-only — it never heartbeats. App.tsx already announces our "playing"
- * presence while a round is active, so here we only poll the shared state.
+ * presence, so here we only poll the shared room state.
  */
-export function RoundLivePanel() {
-  const [state, setState] = useState<RoundState | null>(null);
+export function RoundLivePanel({
+  startId,
+  targetId,
+}: {
+  startId: number;
+  targetId: number;
+}) {
+  const [state, setState] = useState<RoomState | null>(null);
   const [open, setOpen] = useState(true);
   const me = useUsername();
 
@@ -23,7 +30,7 @@ export function RoundLivePanel() {
     let alive = true;
     const tick = async () => {
       try {
-        const s = await api.roundState();
+        const s = await api.roomState(startId, targetId);
         if (alive) setState(s);
       } catch {
         /* ignore transient errors */
@@ -35,7 +42,7 @@ export function RoundLivePanel() {
       alive = false;
       clearInterval(poll);
     };
-  }, []);
+  }, [startId, targetId]);
 
   const online = state?.online ?? [];
   const results = state?.results ?? [];

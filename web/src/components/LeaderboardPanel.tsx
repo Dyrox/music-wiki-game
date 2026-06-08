@@ -20,7 +20,13 @@ export function LeaderboardPanel() {
         const s = await api.roundState();
         if (!alive) return;
         setState(s);
-        api.heartbeat(getClientId(), meRef.current, s.round.roundId, 'browsing');
+        api.heartbeat(
+          getClientId(),
+          meRef.current,
+          s.round.start.id,
+          s.round.target.id,
+          'browsing',
+        );
       } catch {
         /* ignore */
       }

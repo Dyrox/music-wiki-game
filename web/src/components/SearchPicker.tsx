@@ -8,11 +8,15 @@ export function SearchPicker({
   selected,
   onPick,
   placeholder,
+  onRoll,
+  rolling,
 }: {
   label: string;
   selected: SearchArtist | null;
   onPick: (a: SearchArtist | null) => void;
   placeholder?: string;
+  onRoll?: () => void;
+  rolling?: boolean;
 }) {
   const [q, setQ] = useState('');
   const [results, setResults] = useState<SearchArtist[]>([]);
@@ -61,7 +65,21 @@ export function SearchPicker({
 
   return (
     <div className="relative" ref={boxRef}>
-      <label className="mb-1 block text-xs font-medium text-gray-500">{label}</label>
+      <div className="mb-1 flex items-center justify-between">
+        <label className="block text-xs font-medium text-gray-500">{label}</label>
+        {onRoll && (
+          <button
+            type="button"
+            onClick={onRoll}
+            disabled={rolling}
+            title="随机抽一位歌手"
+            className="flex items-center gap-1 text-xs text-gray-400 transition hover:text-nred disabled:opacity-50"
+          >
+            <span className={rolling ? 'inline-block animate-spin' : ''}>🎲</span>
+            随机
+          </button>
+        )}
+      </div>
 
       {selected ? (
         <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2">

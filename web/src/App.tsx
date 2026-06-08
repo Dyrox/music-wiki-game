@@ -27,13 +27,15 @@ export default function App() {
     };
   }, []);
 
-  // While playing a global round, announce presence ("playing") and record the
-  // result once on win — so the lobby leaderboard reflects real players.
+  // Announce presence ("playing") in this start→target room and record the
+  // result once on win — so anyone on the same pair (round OR custom mode)
+  // shares the same live leaderboard.
   useEffect(() => {
-    if (state.mode !== 'round' || state.roundId == null) return;
+    if (!state.start.id || !state.target.id) return;
     if (state.phase === 'playing') {
       reported.current = false;
-      const beat = () => api.heartbeat(getClientId(), me, state.roundId!, 'playing');
+      const beat = () =>
+        api.heartbeat(getClientId(), me, state.start.id, state.target.id, 'playing');
       beat();
       const hb = setInterval(beat, 2500);
       return () => clearInterval(hb);
@@ -43,12 +45,13 @@ export default function App() {
       api.complete(
         getClientId(),
         me,
-        state.roundId,
+        state.start.id,
+        state.target.id,
         moveCount(state),
         (state.endTime ?? Date.now()) - state.startTime,
       );
     }
-  }, [state.phase, state.roundId, state.mode, me]);
+  }, [state.phase, state.start.id, state.target.id, me]);
 
   useEffect(() => {
     if (state.mode !== 'round' || state.phase !== 'playing' || !state.roundEndsAt) return;
@@ -93,7 +96,9 @@ export default function App() {
           onTravel={(artist) => dispatch({ type: 'travel', artist })}
         />
       </main>
-      {state.mode === 'round' && state.roundId != null && <RoundLivePanel />}
+      {state.start.id > 0 && state.target.id > 0 && (
+        <RoundLivePanel startId={state.start.id} targetId={state.target.id} />
+      )}
       {state.phase === 'won' && <WinModal state={state} dispatch={dispatch} />}
       {state.phase === 'lost' && <LostModal state={state} dispatch={dispatch} />}
     </div>

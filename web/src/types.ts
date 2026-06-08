@@ -106,9 +106,12 @@ export interface RoundResultEntry {
   bot?: boolean;
 }
 
-export interface RoundState {
-  round: Round;
+export interface RoomState {
   online: LivePlayer[];
   results: RoundResultEntry[];
   onlineCount: number;
+}
+
+export interface RoundState extends RoomState {
+  round: Round;
 }
