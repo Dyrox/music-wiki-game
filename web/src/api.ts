@@ -59,7 +59,10 @@ export function prefetchArtist(id: number): void {
 export const api = {
   search: (q: string) =>
     getJSON<SearchArtist[]>(apiPath(`/search?q=${encodeURIComponent(q)}`)),
-  artist: (id: number) => getJSON<ArtistData>(apiPath(`/artist/${id}`)),
+  artist: (id: number, targetId?: number) =>
+    getJSON<ArtistData>(
+      apiPath(`/artist/${id}${targetId ? `?target=${targetId}` : ''}`),
+    ),
   albums: (id: number) => getJSON<Album[]>(apiPath(`/artist/${id}/albums`)),
   mvs: (id: number) => getJSON<Mv[]>(apiPath(`/artist/${id}/mvs`)),
   desc: (id: number) => getJSON<ArtistDesc>(apiPath(`/artist/${id}/desc`)),

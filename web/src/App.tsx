@@ -6,6 +6,7 @@ import { SetupScreen } from './components/SetupScreen';
 import { TopBar } from './components/TopBar';
 import { GameHud } from './components/GameHud';
 import { ArtistPage } from './components/ArtistPage';
+import { RoundLivePanel } from './components/RoundLivePanel';
 import { WinModal } from './components/WinModal';
 import { LostModal } from './components/LostModal';
 
@@ -92,6 +93,7 @@ export default function App() {
           onTravel={(artist) => dispatch({ type: 'travel', artist })}
         />
       </main>
+      {state.mode === 'round' && state.roundId != null && <RoundLivePanel />}
       {state.phase === 'won' && <WinModal state={state} dispatch={dispatch} />}
       {state.phase === 'lost' && <LostModal state={state} dispatch={dispatch} />}
     </div>

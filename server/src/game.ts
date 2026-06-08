@@ -91,6 +91,89 @@ export async function shortestDistance(
   return null;
 }
 
+/**
+ * Like shortestDistance, but returns the actual id path (start..target) via
+ * bidirectional BFS over the FULL neighbor graph. Used to recover the next
+ * waypoint when leaving a "hub" artist whose connecting song is buried past the
+ * hot-song cap: the buried edge start→W is invisible from start's own list, but
+ * the search still finds W because W's (smaller) list links back to start.
+ * Returns null if no path within maxDepth / fetch budget.
+ */
+export async function shortestPath(
+  start: number,
+  target: number,
+  maxDepth = 6,
+  expandCap = 40,
+  fetchBudget = 200,
+): Promise<number[] | null> {
+  if (start === target) return [start];
+
+  const aParent = new Map<number, number>([[start, -1]]);
+  const bParent = new Map<number, number>([[target, -1]]);
+  let aFront = [start];
+  let bFront = [target];
+  let aLevel = 0;
+  let bLevel = 0;
+  let fetched = 0;
+
+  // stitch a meeting edge u(start side) — v(target side) into a full path
+  const stitch = (u: number, v: number): number[] => {
+    const left: number[] = [];
+    for (let c = u; c !== -1; c = aParent.get(c) ?? -1) left.push(c);
+    left.reverse();
+    const right: number[] = [];
+    for (let c = v; c !== -1; c = bParent.get(c) ?? -1) right.push(c);
+    return [...left, ...right];
+  };
+
+  while (aFront.length && bFront.length && aLevel + bLevel < maxDepth) {
+    const expandA = aFront.length <= bFront.length;
+    const front = expandA ? aFront : bFront;
+    const parentSelf = expandA ? aParent : bParent;
+    const parentOther = expandA ? bParent : aParent;
+    const nd = (expandA ? aLevel : bLevel) + 1;
+
+    if (fetched + front.length > fetchBudget) return null;
+    fetched += front.length;
+
+    const lists = await mapLimit(front, 16, async (nid) => ({
+      nid,
+      nbs: await fullNeighborIds(nid),
+    }));
+
+    const nextFront: number[] = [];
+    let best: { path: number[]; total: number } | null = null;
+
+    for (const { nid, nbs } of lists) {
+      let pushed = 0;
+      for (const nb of nbs) {
+        if (parentOther.has(nb)) {
+          const path = expandA ? stitch(nid, nb) : stitch(nb, nid);
+          const total = path.length - 1;
+          if (!best || total < best.total) best = { path, total };
+        }
+        if (!parentSelf.has(nb)) {
+          parentSelf.set(nb, nid);
+          if (pushed < expandCap) {
+            nextFront.push(nb);
+            pushed++;
+          }
+        }
+      }
+    }
+    if (best) return best.path;
+
+    if (expandA) {
+      aFront = nextFront;
+      aLevel = nd;
+    } else {
+      bFront = nextFront;
+      bLevel = nd;
+    }
+  }
+  return null;
+}
+
 export interface PathResult {
   path: { id: number; name: string }[];
   moves: number;

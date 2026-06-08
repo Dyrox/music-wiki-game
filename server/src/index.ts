@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PORT, WEB_DIST_DIR } from './config.js';
-import { getArtist, getAlbums, getMvs, getDesc } from './artist.js';
+import { getArtist, getArtistWithTarget, getAlbums, getMvs, getDesc } from './artist.js';
 import { searchArtists } from './search.js';
 import { findPath, shortestDistance } from './game.js';
 import { dailyChallenge, randomChallenge } from './challenge.js';
@@ -53,7 +53,12 @@ app.get(
       res.status(400).json({ error: 'bad id' });
       return;
     }
-    res.json(await getArtist(id));
+    const target = Number(req.query.target);
+    res.json(
+      Number.isFinite(target) && target > 0
+        ? await getArtistWithTarget(id, target)
+        : await getArtist(id),
+    );
   }),
 );
 

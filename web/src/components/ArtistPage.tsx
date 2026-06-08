@@ -30,13 +30,13 @@ export function ArtistPage({
     setCollabOnly(false);
     setTab(0);
     api
-      .artist(artistId)
+      .artist(artistId, targetId)
       .then((d) => alive && setData(d))
       .catch((e) => alive && setError((e as Error).message));
     return () => {
       alive = false;
     };
-  }, [artistId]);
+  }, [artistId, targetId]);
 
   const edgeCount = useMemo(
     () =>

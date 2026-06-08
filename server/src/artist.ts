@@ -1,5 +1,6 @@
 import { TTLCache } from './cache.js';
 import { ncm } from './ncm.js';
+import { shortestPath } from './game.js';
 import {
   ARTIST_TTL_MS,
   LITE_SONG_LIMIT,
@@ -181,6 +182,61 @@ async function fetchArtist(id: number): Promise<ArtistData> {
 
 export function getArtist(id: number): Promise<ArtistData> {
   return cache.wrap(String(id), () => fetchArtist(id));
+}
+
+/** Songs in `otherId`'s discography that credit BOTH artists (the shared edge). */
+async function bridgeSongs(currentId: number, otherId: number): Promise<Song[]> {
+  const other = await getArtist(otherId);
+  return other.songs.filter(
+    (s) =>
+      s.artists.some((a) => a.id === currentId) &&
+      s.artists.some((a) => a.id === otherId),
+  );
+}
+
+/**
+ * Artist page aware of the game's target. A collaboration song credits BOTH
+ * artists, so an edge lives in both discographies — but for a "hub" artist
+ * (e.g. the 可不/KAFU voicebank, 4000+ songs) the connecting song can sit past
+ * our hot-song cap, while on the smaller collaborator it's near the top. When
+ * this artist's capped list doesn't reach the target, we recover the next step:
+ * the direct edge to the target if there is one, otherwise the next waypoint on
+ * the shortest path (so a multi-hop route out of the hub stays walkable). The
+ * recovered song is spliced back in and shows up like any other edge.
+ */
+export async function getArtistWithTarget(
+  id: number,
+  targetId: number,
+): Promise<ArtistData> {
+  const base = await getArtist(id);
+  if (!targetId || targetId === id) return base;
+  // already a visible edge to the target — nothing to recover
+  if (base.neighbors.some((n) => n.artistId === targetId)) return base;
+  // a complete (non-truncated) discography hides nothing recoverable
+  if (base.musicSize <= base.songs.length) return base;
+
+  // direct edge first (target shallow on its own side)…
+  let bridges = await bridgeSongs(id, targetId);
+  if (bridges.length === 0) {
+    // …else the target is 2+ hops away: recover the next waypoint's edge so the
+    // page still offers a step toward the goal.
+    const path = await shortestPath(id, targetId);
+    if (!path || path.length < 2 || path[1] === targetId) return base;
+    const hop = path[1];
+    if (base.neighbors.some((n) => n.artistId === hop)) return base; // already visible
+    bridges = await bridgeSongs(id, hop);
+  }
+  if (bridges.length === 0) return base;
+
+  // Tuck the recovered shortcut into the last 5–10% of the list rather than the
+  // very top — it should still have to be hunted for like a genuine deep collab,
+  // not handed over at #1. A small id-derived offset avoids a predictable index.
+  const seen = new Set(bridges.map((s) => s.id));
+  const rest = base.songs.filter((s) => !seen.has(s.id));
+  const frac = 0.9 + (bridges[0].id % 50) / 1000; // 0.90–0.949
+  const at = Math.floor(rest.length * frac);
+  const songs = [...rest.slice(0, at), ...bridges, ...rest.slice(at)];
+  return { ...base, songs, neighbors: buildNeighbors(id, songs) };
 }
 
 /**
