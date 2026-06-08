@@ -25,7 +25,7 @@ export function WinModal({
 
   function share() {
     const lines = [
-      `🎵 音乐人WikiGame · ${modeName[state.mode]}${state.date ? ' ' + state.date : ''}`,
+      `🎵 六度音乐人 · ${modeName[state.mode]}${state.date ? ' ' + state.date : ''}`,
       `${state.start.name} → 🎯 ${state.target.name}`,
       `${optimal ? '🏆' : '✅'} ${moves} 步${
         state.minMoves != null ? ` / 最少 ${state.minMoves} 步` : ''
