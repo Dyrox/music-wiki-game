@@ -3,10 +3,11 @@ import type { ArtistRef } from './types';
 export type GameMode = 'free' | 'daily' | 'random' | 'round';
 
 export interface GameState {
-  phase: 'setup' | 'playing' | 'won';
+  phase: 'setup' | 'playing' | 'won' | 'lost';
   mode: GameMode;
   date?: string;
   roundId?: number;
+  roundEndsAt?: number;
   start: ArtistRef;
   target: ArtistRef;
   minMoves: number | null;
@@ -33,12 +34,14 @@ export type Action =
       mode: GameMode;
       date?: string;
       roundId?: number;
+      roundEndsAt?: number;
       start: ArtistRef;
       target: ArtistRef;
       minMoves: number | null;
     }
   | { type: 'travel'; artist: ArtistRef }
   | { type: 'jumpTo'; index: number }
+  | { type: 'timeout' }
   | { type: 'restart' }
   | { type: 'exit' };
 
@@ -50,6 +53,7 @@ export function reducer(state: GameState, action: Action): GameState {
         mode: action.mode,
         date: action.date,
         roundId: action.roundId,
+        roundEndsAt: action.roundEndsAt,
         start: action.start,
         target: action.target,
         minMoves: action.minMoves,
@@ -75,6 +79,7 @@ export function reducer(state: GameState, action: Action): GameState {
 
     case 'jumpTo': {
       // backtrack to an earlier point in the path (breadcrumb click)
+      if (state.phase !== 'playing') return state;
       if (action.index < 0 || action.index >= state.path.length) return state;
       return {
         ...state,
@@ -83,6 +88,14 @@ export function reducer(state: GameState, action: Action): GameState {
         path: state.path.slice(0, action.index + 1),
       };
     }
+
+    case 'timeout':
+      if (state.phase !== 'playing' || state.mode !== 'round') return state;
+      return {
+        ...state,
+        phase: 'lost',
+        endTime: state.roundEndsAt ?? Date.now(),
+      };
 
     case 'restart':
       return {

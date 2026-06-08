@@ -39,7 +39,11 @@ export function GameHud({
 
   const cur = currentArtist(state);
   const moves = moveCount(state);
-  const time = elapsed((state.endTime ?? now) - state.startTime);
+  const timedRound = state.mode === 'round' && state.phase === 'playing' && state.roundEndsAt;
+  const timeLabel = timedRound ? '剩余' : '用时';
+  const time = timedRound
+    ? elapsed(Math.max(0, state.roundEndsAt! - now))
+    : elapsed((state.endTime ?? now) - state.startTime);
 
   async function loadHint(reveal: boolean) {
     setHint({ loading: true, reveal });
@@ -82,7 +86,7 @@ export function GameHud({
                 state.minMoves != null ? `${moves} / 最少 ${state.minMoves}` : String(moves)
               }
             />
-            <Stat label="用时" value={time} mono />
+            <Stat label={timeLabel} value={time} mono />
             <div className="flex items-center gap-2">
               <Btn onClick={() => loadHint(false)}>提示</Btn>
               <Btn onClick={() => loadHint(true)}>看路线</Btn>

@@ -15,6 +15,7 @@ export function SetupScreen({
     target: { id: number; name: string },
     minMoves: number | null,
     roundId?: number,
+    roundEndsAt?: number,
   ) => void;
 }) {
   const [start, setStart] = useState<SearchArtist | null>(null);
@@ -42,7 +43,9 @@ export function SetupScreen({
       {/* lobby: round on the left, leaderboard on the right */}
       <div className="mt-9 grid gap-5 md:grid-cols-[1.05fr_0.95fr]">
         <RoundCard
-          onBegin={(s, t, minMoves, roundId) => onBegin('round', s, t, minMoves, roundId)}
+          onBegin={(s, t, minMoves, roundId, roundEndsAt) =>
+            onBegin('round', s, t, minMoves, roundId, roundEndsAt)
+          }
         />
         <LeaderboardPanel />
       </div>

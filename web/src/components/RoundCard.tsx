@@ -18,6 +18,7 @@ export function RoundCard({
     target: { id: number; name: string },
     minMoves: number,
     roundId: number,
+    roundEndsAt: number,
   ) => void;
 }) {
   const [round, setRound] = useState<Round | null>(null);
@@ -99,6 +100,7 @@ export function RoundCard({
                     { id: round.target.id, name: round.target.name },
                     round.minMoves,
                     round.roundId,
+                    round.endsAt - offset.current,
                   )
                 }
                 className="w-full max-w-xs rounded-full bg-nred py-3 text-[15px] font-medium text-white hover:bg-nredDark"

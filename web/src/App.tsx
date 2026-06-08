@@ -7,6 +7,7 @@ import { TopBar } from './components/TopBar';
 import { GameHud } from './components/GameHud';
 import { ArtistPage } from './components/ArtistPage';
 import { WinModal } from './components/WinModal';
+import { LostModal } from './components/LostModal';
 
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -48,12 +49,23 @@ export default function App() {
     }
   }, [state.phase, state.roundId, state.mode, me]);
 
+  useEffect(() => {
+    if (state.mode !== 'round' || state.phase !== 'playing' || !state.roundEndsAt) return;
+    const msLeft = state.roundEndsAt - Date.now();
+    if (msLeft <= 0) {
+      dispatch({ type: 'timeout' });
+      return;
+    }
+    const t = setTimeout(() => dispatch({ type: 'timeout' }), msLeft);
+    return () => clearTimeout(t);
+  }, [state.mode, state.phase, state.roundEndsAt]);
+
   if (state.phase === 'setup') {
     return (
       <div className="min-h-screen bg-[#f6f6f8]">
         <SetupScreen
-          onBegin={(mode, start, target, minMoves, roundId) =>
-            dispatch({ type: 'begin', mode, start, target, minMoves, roundId })
+          onBegin={(mode, start, target, minMoves, roundId, roundEndsAt) =>
+            dispatch({ type: 'begin', mode, start, target, minMoves, roundId, roundEndsAt })
           }
         />
       </div>
@@ -81,6 +93,7 @@ export default function App() {
         />
       </main>
       {state.phase === 'won' && <WinModal state={state} dispatch={dispatch} />}
+      {state.phase === 'lost' && <LostModal state={state} dispatch={dispatch} />}
     </div>
   );
 }
