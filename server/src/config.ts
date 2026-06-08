@@ -2,6 +2,7 @@ export const NCM_BASE =
   process.env.NCM_BASE ?? 'https://api-enhanced-gamma-sandy.vercel.app';
 
 export const PORT = Number(process.env.PORT ?? 4000);
+export const WEB_DIST_DIR = process.env.WEB_DIST_DIR;
 
 // The upstream caps a single /artist/songs call, and its `hot` order is only
 // stable when paged by offset — so we paginate. 100 per page, up to MAX pages.

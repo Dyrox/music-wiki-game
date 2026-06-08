@@ -1,0 +1,31 @@
+services:
+  app:
+    image: ${IMAGE:?Set IMAGE to the image tag you want to run}
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${APP_BIND:-0.0.0.0}:${APP_PORT:-4000}:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      NCM_BASE: ${NCM_BASE:-https://api-enhanced-gamma-sandy.vercel.app}
+      SONG_PAGE_SIZE: ${SONG_PAGE_SIZE:-100}
+      MAX_SONG_PAGES: ${MAX_SONG_PAGES:-4}
+      LITE_SONG_LIMIT: ${LITE_SONG_LIMIT:-100}
+      BFS_MAX_DEPTH: ${BFS_MAX_DEPTH:-5}
+      BFS_NEIGHBOR_CAP: ${BFS_NEIGHBOR_CAP:-14}
+      ROUND_MS: ${ROUND_MS:-180000}
+      ARTIST_TTL_MS: ${ARTIST_TTL_MS:-21600000}
+      SEARCH_TTL_MS: ${SEARCH_TTL_MS:-3600000}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

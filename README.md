@@ -46,6 +46,15 @@ pnpm -C web dev      # 前端
 
 > 后端启动时会**预热当天的每日挑战**（一次 BFS，约 10–15s，之后命中缓存即时返回）。
 
+## 部署
+推荐用 Docker 部署到 VPS：镜像内包含 Vite 构建后的前端静态文件和 Express API，容器只需要暴露 `4000`。
+
+已提供：
+- `Dockerfile`：生产镜像构建
+- `deploy/compose.yml`：VPS 上的 Docker Compose 配置
+- `.github/workflows/deploy.yml`：push 到 `main` 后构建 GHCR 镜像并 SSH 到 VPS 部署
+- `docs/deploy-vps.md`：完整 VPS 和 GitHub Secrets 配置说明
+
 ## 主要接口（server）
 | 路由 | 说明 |
 |---|---|

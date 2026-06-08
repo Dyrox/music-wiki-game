@@ -1,12 +1,22 @@
 import express from 'express';
 import cors from 'cors';
-import { PORT } from './config.js';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { PORT, WEB_DIST_DIR } from './config.js';
 import { getArtist, getAlbums, getMvs, getDesc } from './artist.js';
 import { searchArtists } from './search.js';
 import { findPath, shortestDistance } from './game.js';
 import { dailyChallenge, randomChallenge } from './challenge.js';
 import { currentRound, ensureRounds } from './rounds.js';
 import { heartbeat, complete, leave, roundState } from './presence.js';
+
+const defaultWebDist = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../../web/dist',
+);
+const webDist = WEB_DIST_DIR ?? defaultWebDist;
+const webIndex = path.join(webDist, 'index.html');
 
 const app = express();
 app.use(cors());
@@ -163,6 +173,17 @@ app.post('/api/round/complete', (req, res) => {
   }
   res.json({ ok: true });
 });
+
+if (existsSync(webIndex)) {
+  app.use(express.static(webDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+      next();
+      return;
+    }
+    res.sendFile(webIndex);
+  });
+}
 
 app.listen(PORT, () => {
   console.log(`music-wiki-game server listening on http://localhost:${PORT}`);

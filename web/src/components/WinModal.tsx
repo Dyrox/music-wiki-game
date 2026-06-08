@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Action, GameState } from '../game';
 import { moveCount } from '../game';
 import { elapsed } from '../format';
@@ -43,7 +43,8 @@ export function WinModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="animate-pop w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
+      <Confetti />
+      <div className="animate-pop relative z-10 w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
         <div className="text-5xl">{optimal ? '🏆' : '🎉'}</div>
         <h2 className="mt-3 text-2xl font-bold text-gray-900">
           {optimal ? '完美通关！' : '通关！'}
@@ -90,6 +91,93 @@ export function WinModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function Confetti() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const colors = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
+    const duration = 2800;
+    const gravity = 0.18;
+    let width = 0;
+    let height = 0;
+    let raf = 0;
+    let start = 0;
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      width = canvas.clientWidth;
+      height = canvas.clientHeight;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    resize();
+    window.addEventListener('resize', resize);
+
+    const pieces = Array.from({ length: 120 }, () => {
+      const side = Math.random() < 0.5 ? -1 : 1;
+      return {
+        x: width / 2 + side * (40 + Math.random() * 120),
+        y: height * 0.36 + Math.random() * 40,
+        w: 6 + Math.random() * 6,
+        h: 8 + Math.random() * 10,
+        vx: side * (2.5 + Math.random() * 5),
+        vy: -(5 + Math.random() * 7),
+        rotation: Math.random() * Math.PI,
+        spin: (Math.random() - 0.5) * 0.35,
+        color: colors[Math.floor(Math.random() * colors.length)],
+      };
+    });
+
+    const draw = (now: number) => {
+      if (!start) start = now;
+      const elapsed = now - start;
+      ctx.clearRect(0, 0, width, height);
+
+      pieces.forEach((piece) => {
+        piece.x += piece.vx;
+        piece.y += piece.vy;
+        piece.vy += gravity;
+        piece.rotation += piece.spin;
+
+        const fade = Math.max(0, 1 - elapsed / duration);
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, fade * 1.4);
+        ctx.translate(piece.x, piece.y);
+        ctx.rotate(piece.rotation);
+        ctx.fillStyle = piece.color;
+        ctx.fillRect(-piece.w / 2, -piece.h / 2, piece.w, piece.h);
+        ctx.restore();
+      });
+
+      if (elapsed < duration) raf = requestAnimationFrame(draw);
+      else ctx.clearRect(0, 0, width, height);
+    };
+
+    raf = requestAnimationFrame(draw);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 h-full w-full"
+    />
   );
 }
 
