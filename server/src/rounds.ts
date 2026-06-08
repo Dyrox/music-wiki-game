@@ -49,9 +49,22 @@ function getRound(roundId: number): Promise<RoundCore> {
   return cache.wrap(String(roundId), () => buildRound(roundId));
 }
 
+function fallbackRound(roundId: number): RoundCore {
+  return {
+    roundId,
+    start: { id: 5346, name: '王力宏', picUrl: '' },
+    target: { id: 8325, name: '梁静茹', picUrl: '' },
+    minMoves: 3,
+  };
+}
+
 export async function currentRound(): Promise<Round> {
   const roundId = roundIdFor();
-  const core = await getRound(roundId);
+  let core = cache.get(String(roundId));
+  if (!core) {
+    core = fallbackRound(roundId);
+    cache.set(String(roundId), core);
+  }
   void ensureRounds(); // keep future rounds warm after serving the current one
   return {
     ...core,
@@ -68,7 +81,7 @@ export async function ensureRounds(): Promise<void> {
   ensuring = true;
   const id = roundIdFor();
   try {
-    for (let i = 0; i <= ROUND_PREFETCH_COUNT; i++) {
+    for (let i = 1; i <= ROUND_PREFETCH_COUNT; i++) {
       const roundId = id + i;
       await getRound(roundId).catch((e) =>
         console.error(
