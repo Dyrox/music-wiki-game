@@ -55,23 +55,33 @@ function getRound(roundId: number): Promise<RoundCore> {
   return cache.wrap(String(roundId), () => buildRound(roundId));
 }
 
+// Shown only transiently, while the real round for the current window is still
+// being generated (e.g. right after a restart). Real avatars so it doesn't look
+// broken; SafeImg degrades to a placeholder if a URL ever 404s.
 function fallbackRound(roundId: number): RoundCore {
   return {
     roundId,
-    start: { id: 5346, name: '王力宏', picUrl: '' },
-    target: { id: 8325, name: '梁静茹', picUrl: '' },
+    start: {
+      id: 5346,
+      name: '王力宏',
+      picUrl: 'https://p4.music.126.net/bM06VHfs1ivzKegl3nMPsg==/109951169421841547.jpg',
+    },
+    target: {
+      id: 8325,
+      name: '梁静茹',
+      picUrl: 'https://p4.music.126.net/g_32ea9zMstphGkRjwgC1g==/109951164077995938.jpg',
+    },
     minMoves: 3,
   };
 }
 
 export async function currentRound(): Promise<Round> {
   const roundId = roundIdFor();
-  let core = cache.get(String(roundId));
-  if (!core) {
-    core = fallbackRound(roundId);
-    cache.set(String(roundId), core);
-  }
-  void ensureRounds(); // keep future rounds warm after serving the current one
+  // Never CACHE the fallback — doing so poisons this roundId so the real round
+  // (with avatars) can never replace it. Serve it transiently until
+  // ensureRounds() has built the real current round.
+  const core = cache.get(String(roundId)) ?? fallbackRound(roundId);
+  void ensureRounds(); // keep the current + upcoming rounds warm
   return {
     ...core,
     durationMs: ROUND_MS,
@@ -87,7 +97,9 @@ export async function ensureRounds(): Promise<void> {
   ensuring = true;
   const id = roundIdFor();
   try {
-    for (let i = 1; i <= ROUND_PREFETCH_COUNT; i++) {
+    // i = 0 builds the CURRENT round too (not just future ones), so it's ready
+    // right after a boot/restart instead of falling back for a whole window.
+    for (let i = 0; i <= ROUND_PREFETCH_COUNT; i++) {
       const roundId = id + i;
       await getRound(roundId).catch((e) =>
         console.error(

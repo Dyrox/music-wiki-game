@@ -32,7 +32,7 @@ export function getAlbums(id: number): Promise<Album[]> {
     return list.map((a) => ({
       id: a.id,
       name: a.name ?? '',
-      picUrl: a.picUrl ?? a.blurPicUrl ?? '',
+      picUrl: a.picUrl || a.blurPicUrl || '',
       publishTime: a.publishTime ?? 0,
       size: a.size ?? 0,
     }));
@@ -47,7 +47,7 @@ export function getMvs(id: number): Promise<Mv[]> {
     return list.map((m) => ({
       id: m.id,
       name: m.name ?? '',
-      picUrl: m.imgurl ?? m.imgurl16v9 ?? '',
+      picUrl: m.imgurl || m.imgurl16v9 || '',
       durationMs: m.duration ?? 0,
       playCount: m.playCount ?? 0,
     }));
@@ -76,7 +76,7 @@ export function getArtistBrief(
   return briefCache.wrap(String(id), async () => {
     const info = await ncm<any>('/artists', { id });
     const a = info?.artist ?? {};
-    return { id, name: a.name ?? '', picUrl: a.picUrl ?? a.img1v1Url ?? '' };
+    return { id, name: a.name ?? '', picUrl: a.picUrl || a.img1v1Url || '' };
   });
 }
 
@@ -170,7 +170,7 @@ async function fetchArtist(id: number): Promise<ArtistData> {
     name: artist.name ?? '',
     alias: Array.isArray(artist.alias) ? artist.alias.filter(Boolean) : [],
     trans: artist.trans ?? '',
-    picUrl: artist.picUrl ?? artist.img1v1Url ?? '',
+    picUrl: artist.picUrl || artist.img1v1Url || '',
     briefDesc: artist.briefDesc ?? '',
     musicSize: artist.musicSize ?? songs.length,
     albumSize: artist.albumSize ?? 0,
