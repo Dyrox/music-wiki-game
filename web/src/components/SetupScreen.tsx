@@ -6,6 +6,7 @@ import { SearchPicker } from './SearchPicker';
 import { RoundCard } from './RoundCard';
 import { LeaderboardPanel } from './LeaderboardPanel';
 import { HandleEditor } from './HandleEditor';
+import { SafeImg } from './ui';
 
 export function SetupScreen({
   onBegin,
@@ -38,19 +39,40 @@ export function SetupScreen({
   return (
     <div className="mx-auto max-w-[1040px] px-4 py-6 sm:px-6 sm:py-10">
       {/* hero */}
-      <div className="text-center">
-        <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-nred/10 px-3 py-1 text-xs font-medium text-nred">
-          🎵 六度音乐人 · Six Degrees of Musicians
+      <div className="grid items-center gap-8 md:grid-cols-[1.1fr_0.9fr]">
+        {/* left: brand + headline + tagline + handle */}
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-nred text-xl shadow-sm">
+              🎵
+            </div>
+            <div className="leading-tight">
+              <div className="text-lg font-bold text-gray-900">六度音乐人</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">
+                Six Degrees of Musicians
+              </div>
+            </div>
+          </div>
+
+          <h1 className="mt-7 text-4xl font-bold leading-[1.12] tracking-tight text-gray-900 sm:text-[2.85rem]">
+            从一位歌手，
+            <br />
+            走到<span className="text-nred">另一位歌手</span>
+          </h1>
+
+          <p className="mt-5 max-w-md text-[15px] leading-relaxed text-gray-500">
+            每一步都要通过一首<b className="font-semibold text-nred">合作歌曲</b>跳转 —— 在歌手主页里找到
+            TA 和别人合作的曲子，点开合作者，就走到了下一位歌手。用最少的步数抵达终点。
+          </p>
+
+          <div className="mt-6">
+            <HandleEditor />
+          </div>
         </div>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-          从一位歌手，走到另一位歌手
-        </h1>
-        <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-gray-500">
-          每一步都要通过一首<b className="text-nred">合作歌曲</b>跳转 —— 在歌手主页里找到 TA
-          和别人合作的曲子，点开合作者，就走到了下一位歌手。用最少的步数抵达终点。
-        </p>
-        <div className="mt-3">
-          <HandleEditor />
+
+        {/* right: a concrete example of how a path connects */}
+        <div className="hidden md:block">
+          <ExamplePath />
         </div>
       </div>
 
@@ -135,6 +157,55 @@ export function SetupScreen({
           GitHub
         </a>
       </footer>
+    </div>
+  );
+}
+
+// A concrete mini-walkthrough of a real path, in the game's own avatar idiom —
+// so the landing page shows what the game *is* instead of just describing it.
+const EXAMPLE = [
+  { name: 'Katy Perry', pic: 'https://p3.music.126.net/A1SLzv04GMv_X8JYT5TW1Q==/109951169774663460.jpg' },
+  { name: 'Zedd', pic: 'https://p3.music.126.net/kwdvsXHaoOp_ml6sIxH8YQ==/109951165543501110.jpg' },
+  { name: 'Selena Gomez', pic: 'https://p3.music.126.net/mamkdYon8KMoFOM8dgMzxw==/109951169421836418.jpg' },
+];
+
+function ExamplePath() {
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-xs font-medium text-gray-400">示例 · 怎么连起来</span>
+        <span className="rounded-full bg-nred/10 px-2 py-0.5 text-[11px] font-semibold text-nred">
+          2 步
+        </span>
+      </div>
+      {EXAMPLE.map((s, i) => {
+        const last = i === EXAMPLE.length - 1;
+        return (
+          <div key={s.name}>
+            <div className="flex items-center gap-3">
+              <SafeImg
+                src={s.pic}
+                seed={s.name}
+                size={120}
+                className={`h-11 w-11 shrink-0 rounded-full object-cover ${
+                  last ? 'ring-2 ring-amber-300' : 'ring-1 ring-gray-100'
+                }`}
+              />
+              <span className="flex-1 text-sm font-semibold text-gray-800">{s.name}</span>
+              {i === 0 && <span className="text-[11px] text-gray-400">起点</span>}
+              {last && <span className="text-sm">🎯</span>}
+            </div>
+            {!last && (
+              <div className="ml-[21px] flex items-center gap-2 py-1.5">
+                <span className="h-5 w-px bg-gray-200" />
+                <span className="rounded-full bg-gray-50 px-2 py-0.5 text-[11px] text-gray-400">
+                  ♪ 一首合作曲
+                </span>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
