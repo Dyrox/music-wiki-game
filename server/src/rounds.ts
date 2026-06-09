@@ -1,7 +1,7 @@
 import { TTLCache } from './cache.js';
 import { ROUND_MS, ROUND_PREFETCH_COUNT } from './config.js';
 import { generateVerified } from './challenge.js';
-import { getArtistBrief } from './artist.js';
+import { getArtist, getArtistBrief, getArtistWithTarget } from './artist.js';
 
 interface Tile {
   id: number;
@@ -37,6 +37,12 @@ async function buildRound(roundId: number): Promise<RoundCore> {
     getArtistBrief(c.start.id),
     getArtistBrief(c.target.id),
   ]);
+  // Warm the heavy data in the background so "开始本轮" loads instantly: the
+  // full start page (incl. target-aware edge recovery) and the target's
+  // discography. Rounds are built up to ROUND_PREFETCH_COUNT ahead, so this
+  // is done well before anyone clicks. Fire-and-forget — never blocks the tile.
+  void getArtistWithTarget(c.start.id, c.target.id).catch(() => {});
+  void getArtist(c.target.id).catch(() => {});
   return {
     roundId,
     start: { id: c.start.id, name: c.start.name || s.name, picUrl: s.picUrl },
