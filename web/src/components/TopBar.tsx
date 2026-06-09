@@ -18,7 +18,7 @@ export function TopBar({
 
   return (
     <header className="sticky top-0 z-20 border-b border-gray-100 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-[1100px] items-center gap-4 px-6">
+      <div className="mx-auto flex h-16 max-w-[1100px] items-center gap-2 px-3 sm:gap-4 sm:px-6">
         <button
           onClick={() => canGoBack && onBack()}
           disabled={!canGoBack}
@@ -35,7 +35,7 @@ export function TopBar({
         </button>
 
         <div
-          className="relative flex h-9 w-[300px] items-center rounded-full bg-gray-100 px-4 text-sm text-gray-400"
+          className="relative flex h-9 min-w-0 flex-1 items-center rounded-full bg-gray-100 px-4 text-sm text-gray-400 sm:w-[300px] sm:flex-none"
           onClick={() => {
             setPoke(true);
             setTimeout(() => setPoke(false), 1800);

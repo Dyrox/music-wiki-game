@@ -15,7 +15,7 @@ export function LostModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-2xl sm:p-8">
         <div className="text-5xl">⌛</div>
         <h2 className="mt-3 text-2xl font-bold text-gray-900">本轮结束</h2>
         <p className="mt-1 text-sm text-gray-500">

@@ -47,7 +47,7 @@ export function WinModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <Confetti />
-      <div className="animate-pop relative z-10 w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
+      <div className="animate-pop relative z-10 w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-2xl sm:p-8">
         <div className="text-5xl">{optimal ? '🏆' : '🎉'}</div>
         <h2 className="mt-3 text-2xl font-bold text-gray-900">
           {optimal ? '完美通关！' : '通关！'}
@@ -85,7 +85,7 @@ export function WinModal({
           </div>
         ) : null}
 
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6 flex gap-2 sm:gap-3">
           <button
             onClick={share}
             className="flex-1 rounded-full bg-nred py-2.5 text-sm font-medium text-white hover:bg-nredDark"
@@ -94,13 +94,13 @@ export function WinModal({
           </button>
           <button
             onClick={() => dispatch({ type: 'restart' })}
-            className="rounded-full border border-gray-200 px-5 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
+            className="rounded-full border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 sm:px-5"
           >
             重玩
           </button>
           <button
             onClick={() => dispatch({ type: 'exit' })}
-            className="rounded-full border border-gray-200 px-5 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
+            className="rounded-full border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 sm:px-5"
           >
             换一局
           </button>

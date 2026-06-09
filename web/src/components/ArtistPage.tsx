@@ -66,17 +66,19 @@ export function ArtistPage({
   return (
     <div className="animate-pop pb-24">
       {/* ---- header ---- */}
-      <div className="flex items-center gap-8 pt-8">
+      <div className="flex items-center gap-4 pt-5 sm:gap-8 sm:pt-8">
         <SafeImg
           src={data.picUrl}
           seed={data.name}
           size={400}
-          className="h-40 w-40 shrink-0 rounded-full object-cover shadow-sm"
+          className="h-24 w-24 shrink-0 rounded-full object-cover shadow-sm sm:h-40 sm:w-40"
         />
         <div className="min-w-0">
-          <h1 className="text-3xl font-bold text-gray-900">{data.name || `#${data.id}`}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+            {data.name || `#${data.id}`}
+          </h1>
           {subtitle && <div className="mt-2 text-sm text-gray-400">{subtitle}</div>}
-          <div className="mt-5 flex items-center gap-3">
+          <div className="mt-4 flex items-center gap-3 sm:mt-5">
             <button className="flex items-center gap-1.5 rounded-full bg-nred px-5 py-2 text-sm font-medium text-white hover:bg-nredDark">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M8 5v14l11-7z" />
@@ -91,7 +93,7 @@ export function ArtistPage({
       </div>
 
       {/* ---- tabs ---- */}
-      <div className="mt-8 flex items-center gap-7 border-b border-gray-100 text-[15px]">
+      <div className="no-scrollbar mt-6 flex items-center gap-5 overflow-x-auto border-b border-gray-100 text-[15px] sm:mt-8 sm:gap-7">
         {TABS.map((t, i) => {
           const count = t === '专辑' ? data.albumSize : t === 'MV' ? data.mvSize : 0;
           const active = i === tab;
@@ -99,7 +101,7 @@ export function ArtistPage({
             <button
               key={t}
               onClick={() => setTab(i)}
-              className={`-mb-px border-b-2 pb-3 transition ${
+              className={`-mb-px shrink-0 whitespace-nowrap border-b-2 pb-3 transition ${
                 active
                   ? 'border-nred font-semibold text-gray-900'
                   : 'border-transparent text-gray-500 hover:text-gray-800'
@@ -138,11 +140,11 @@ export function ArtistPage({
       </div>
 
       {/* table header */}
-      <div className="mt-3 grid grid-cols-[40px_1fr_minmax(110px,210px)_52px_64px] border-b border-gray-100 px-2 pb-2 text-xs text-gray-400">
+      <div className="mt-3 grid grid-cols-[30px_1fr_56px] border-b border-gray-100 px-2 pb-2 text-xs text-gray-400 sm:grid-cols-[40px_1fr_minmax(110px,210px)_52px_64px]">
         <div className="text-center">#</div>
         <div>标题</div>
-        <div>专辑</div>
-        <div className="text-center">喜欢</div>
+        <div className="hidden sm:block">专辑</div>
+        <div className="hidden text-center sm:block">喜欢</div>
         <div className="text-right">时长</div>
       </div>
 

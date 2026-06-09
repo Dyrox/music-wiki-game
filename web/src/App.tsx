@@ -93,7 +93,7 @@ export default function App() {
         canGoBack={state.path.length > 1}
         onBack={() => dispatch({ type: 'jumpTo', index: state.path.length - 2 })}
       />
-      <main className="mx-auto w-full max-w-[1100px] flex-1 px-6">
+      <main className="mx-auto w-full max-w-[1100px] flex-1 px-3 sm:px-6">
         <ArtistPage
           key={cur.id}
           artistId={cur.id}

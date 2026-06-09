@@ -44,7 +44,7 @@ export function SongRow({
 
   return (
     <div
-      className={`group grid grid-cols-[40px_1fr_minmax(110px,210px)_52px_64px] items-center rounded-md px-2 py-2 text-sm transition ${
+      className={`group grid grid-cols-[30px_1fr_56px] items-center rounded-md px-2 py-2 text-sm transition sm:grid-cols-[40px_1fr_minmax(110px,210px)_52px_64px] ${
         hasTarget
           ? 'bg-amber-50 ring-1 ring-amber-200'
           : isEdge
@@ -134,10 +134,12 @@ export function SongRow({
       </div>
 
       {/* album */}
-      <div className="truncate pr-2 text-xs text-gray-400">{song.album.name}</div>
+      <div className="hidden truncate pr-2 text-xs text-gray-400 sm:block">
+        {song.album.name}
+      </div>
 
       {/* like */}
-      <div className="flex justify-center">
+      <div className="hidden justify-center sm:flex">
         <Heart />
       </div>
 

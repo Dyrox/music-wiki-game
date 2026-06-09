@@ -67,9 +67,9 @@ export function GameHud({
 
   return (
     <div className="z-30 bg-gradient-to-r from-[#2b2b3a] to-[#3a2b3a] text-white shadow-md">
-      <div className="mx-auto max-w-[1100px] px-6 py-2.5">
+      <div className="mx-auto max-w-[1100px] px-3 py-2 sm:px-6 sm:py-2.5">
         {/* row 1: endpoints + stats + controls */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 sm:gap-x-4 sm:gap-y-2">
           <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium">
             {modeLabel[state.mode]}
           </span>

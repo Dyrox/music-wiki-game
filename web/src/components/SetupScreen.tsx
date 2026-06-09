@@ -36,13 +36,13 @@ export function SetupScreen({
   }
 
   return (
-    <div className="mx-auto max-w-[1040px] px-6 py-10">
+    <div className="mx-auto max-w-[1040px] px-4 py-6 sm:px-6 sm:py-10">
       {/* hero */}
       <div className="text-center">
         <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-nred/10 px-3 py-1 text-xs font-medium text-nred">
           🎵 六度音乐人 · Six Degrees of Musicians
         </div>
-        <h1 className="text-4xl font-bold tracking-tight text-gray-900">
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
           从一位歌手，走到另一位歌手
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-gray-500">
@@ -55,7 +55,7 @@ export function SetupScreen({
       </div>
 
       {/* lobby: round on the left, leaderboard on the right */}
-      <div className="mt-9 grid gap-5 md:grid-cols-[1.05fr_0.95fr]">
+      <div className="mt-7 grid gap-4 sm:gap-5 md:mt-9 md:grid-cols-[1.05fr_0.95fr]">
         <RoundCard
           onBegin={(s, t, minMoves, roundId, roundEndsAt) =>
             onBegin('round', s, t, minMoves, roundId, roundEndsAt)
@@ -149,7 +149,7 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
       <div className="mb-3 flex items-center gap-2">
         <h3 className="text-lg font-bold text-gray-900">{title}</h3>
         {badge && (

@@ -23,7 +23,10 @@ export function RoundLivePanel({
   targetId: number;
 }) {
   const [state, setState] = useState<RoomState | null>(null);
-  const [open, setOpen] = useState(true);
+  // default expanded on desktop, collapsed on phones so it doesn't cover the page
+  const [open, setOpen] = useState(
+    () => typeof window === 'undefined' || window.innerWidth >= 640,
+  );
   const me = useUsername();
 
   useEffect(() => {

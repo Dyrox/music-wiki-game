@@ -63,10 +63,10 @@ export function RoundCard({
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
       {/* header strip with live countdown */}
-      <div className="flex items-center justify-between bg-gradient-to-r from-[#2b2b3a] to-[#3a2b3a] px-6 py-3 text-white">
+      <div className="flex items-center justify-between bg-gradient-to-r from-[#2b2b3a] to-[#3a2b3a] px-4 py-3 text-white sm:px-6">
         <span className="flex items-center gap-2 font-semibold">
           🎮 本轮挑战
-          <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-medium">
+          <span className="hidden rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-medium sm:inline">
             每 3 分钟换一题 · 全员同题
           </span>
         </span>
@@ -75,14 +75,14 @@ export function RoundCard({
         </span>
       </div>
 
-      <div className="px-6 py-8">
+      <div className="px-4 py-6 sm:px-6 sm:py-8">
         {err ? (
           <div className="py-8 text-center text-sm text-gray-400">加载失败：{err}</div>
         ) : !round ? (
           <div className="py-8 text-center text-sm text-gray-400">加载本轮题目…</div>
         ) : (
           <>
-            <div className="flex items-center justify-center gap-8 sm:gap-14">
+            <div className="flex items-center justify-center gap-4 sm:gap-14">
               <Tile tile={round.start} label="起点" />
               <div className="flex flex-col items-center gap-1 text-gray-300">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
@@ -120,13 +120,13 @@ export function RoundCard({
 
 function Tile({ tile, label, target }: { tile: RoundTile; label: string; target?: boolean }) {
   return (
-    <div className="flex w-32 flex-col items-center gap-3 text-center">
+    <div className="flex w-24 flex-col items-center gap-3 text-center sm:w-32">
       <div className="relative">
         <SafeImg
           src={tile.picUrl}
           seed={tile.name}
           size={300}
-          className={`h-28 w-28 rounded-full object-cover shadow ${
+          className={`h-20 w-20 rounded-full object-cover shadow sm:h-28 sm:w-28 ${
             target ? 'ring-4 ring-amber-300' : 'ring-2 ring-gray-100'
           }`}
         />
