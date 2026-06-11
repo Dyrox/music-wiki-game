@@ -1,8 +1,10 @@
 import { TTLCache } from './cache.js';
 import { ncm } from './ncm.js';
 import { shortestPath } from './game.js';
+import { loadNeighbors, saveNeighbors } from './store.js';
 import {
   ARTIST_TTL_MS,
+  GRAPH_REFRESH_MS,
   LITE_SONG_LIMIT,
   MAX_SONG_PAGES,
   SONG_PAGE_SIZE,
@@ -165,6 +167,9 @@ async function fetchArtist(id: number): Promise<ArtistData> {
     songs.push(s);
   }
 
+  const neighbors = buildNeighbors(id, songs);
+  saveNeighbors(id, 'full', neighbors.map((n) => ({ id: n.artistId, name: n.name })));
+
   return {
     id,
     name: artist.name ?? '',
@@ -176,7 +181,7 @@ async function fetchArtist(id: number): Promise<ArtistData> {
     albumSize: artist.albumSize ?? 0,
     mvSize: artist.mvSize ?? 0,
     songs,
-    neighbors: buildNeighbors(id, songs),
+    neighbors,
   };
 }
 
@@ -243,21 +248,37 @@ export async function getArtistWithTarget(
  * Cheap neighbor view for BFS: just the top page of songs, collaborators sorted
  * by how many songs connect them. Keeps challenge generation / hints fast and
  * biased toward popular (easy-to-find) edges.
+ *
+ * Backed by the persistent graph store: a fresh-enough stored copy skips the
+ * upstream entirely, and a stale copy still beats failing when upstream is down.
  */
 export function liteNeighbors(id: number): Promise<ArtistRef[]> {
   return liteCache.wrap(String(id), async () => {
-    const { songs } = await fetchSongPage(id, 0, LITE_SONG_LIMIT);
-    const count = new Map<number, { ref: ArtistRef; n: number }>();
-    for (const raw of songs) {
-      const artists = cleanArtists(raw.ar);
-      if (artists.length < 2) continue;
-      for (const a of artists) {
-        if (a.id === id) continue;
-        const e = count.get(a.id);
-        if (e) e.n++;
-        else count.set(a.id, { ref: a, n: 1 });
-      }
+    const stored = loadNeighbors(id, 'lite');
+    if (stored && Date.now() - stored.fetchedAt < GRAPH_REFRESH_MS) return stored.refs;
+    try {
+      const refs = await fetchLiteNeighbors(id);
+      saveNeighbors(id, 'lite', refs);
+      return refs;
+    } catch (e) {
+      if (stored) return stored.refs;
+      throw e;
     }
-    return [...count.values()].sort((a, b) => b.n - a.n).map((e) => e.ref);
   });
+}
+
+async function fetchLiteNeighbors(id: number): Promise<ArtistRef[]> {
+  const { songs } = await fetchSongPage(id, 0, LITE_SONG_LIMIT);
+  const count = new Map<number, { ref: ArtistRef; n: number }>();
+  for (const raw of songs) {
+    const artists = cleanArtists(raw.ar);
+    if (artists.length < 2) continue;
+    for (const a of artists) {
+      if (a.id === id) continue;
+      const e = count.get(a.id);
+      if (e) e.n++;
+      else count.set(a.id, { ref: a, n: 1 });
+    }
+  }
+  return [...count.values()].sort((a, b) => b.n - a.n).map((e) => e.ref);
 }

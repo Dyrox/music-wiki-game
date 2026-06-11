@@ -1,5 +1,11 @@
-import { getArtist, liteNeighbors } from './artist.js';
-import { BFS_MAX_DEPTH, BFS_NEIGHBOR_CAP } from './config.js';
+import { getArtist, getArtistBrief, liteNeighbors } from './artist.js';
+import { loadNeighbors } from './store.js';
+import {
+  BFS_FETCH_BUDGET,
+  BFS_MAX_DEPTH,
+  BFS_NEIGHBOR_CAP,
+  GRAPH_REFRESH_MS,
+} from './config.js';
 import { mapLimit } from './util.js';
 
 /** Collaboration neighbors of an artist, capped for bounded search. */
@@ -11,12 +17,20 @@ async function neighborRefsOf(id: number) {
   }
 }
 
-/** ALL collaborators of an artist (full discography), sorted by collab count. */
+/**
+ * ALL collaborators of an artist (full discography), sorted by collab count.
+ * A fresh persisted copy answers in microseconds; otherwise we pay the full
+ * 5-call getArtist fetch (which writes the copy back for next time).
+ */
 async function fullNeighborIds(id: number): Promise<number[]> {
+  const stored = loadNeighbors(id, 'full');
+  if (stored && Date.now() - stored.fetchedAt < GRAPH_REFRESH_MS) {
+    return stored.refs.map((r) => r.id);
+  }
   try {
     return (await getArtist(id)).neighbors.map((n) => n.artistId);
   } catch {
-    return [];
+    return stored ? stored.refs.map((r) => r.id) : [];
   }
 }
 
@@ -180,66 +194,90 @@ export interface PathResult {
 }
 
 /**
- * Breadth-first shortest path through the collaboration graph.
- * Returns null if no path within maxDepth.
+ * Breadth-first shortest path through the collaboration graph, bidirectional:
+ * growing a frontier from both ends meets in the middle after ~2·b^(d/2)
+ * expansions instead of b^d — for cap 14 / depth 4 that's ~400 node fetches
+ * versus ~3000, and a depth-5 search stays feasible at all. Expansion uses the
+ * cheap lite view (popular, findable edges) so hints stay walkable in-game.
+ * Returns null if no path within maxDepth / fetch budget.
  */
 export async function findPath(
   from: number,
   to: number,
   maxDepth = BFS_MAX_DEPTH,
+  fetchBudget = BFS_FETCH_BUDGET,
 ): Promise<PathResult | null> {
-  if (from === to) {
-    const a = await getArtist(from);
-    return { path: [{ id: from, name: a.name }], moves: 0 };
-  }
-
-  const parent = new Map<number, number>();
+  // endpoint names can't be picked up from neighbor refs, so fetch them cheaply
   const nameOf = new Map<number, string>();
-  parent.set(from, -1);
-  try {
-    nameOf.set(from, (await getArtist(from)).name);
-  } catch {
-    /* leave start name blank */
-  }
-  let frontier = [from];
+  const briefs = await Promise.all(
+    [from, to].map((id) => getArtistBrief(id).catch(() => ({ id, name: '' }))),
+  );
+  for (const b of briefs) nameOf.set(b.id, b.name);
 
-  for (let depth = 0; depth < maxDepth; depth++) {
-    if (frontier.length === 0) break;
-    const expanded = await mapLimit(frontier, 12, async (nid) => ({
-      nid,
-      neighbors: await neighborRefsOf(nid),
-    }));
-
-    const next: number[] = [];
-    for (const { nid, neighbors } of expanded) {
-      for (const nb of neighbors) {
-        if (parent.has(nb.id)) continue;
-        parent.set(nb.id, nid);
-        nameOf.set(nb.id, nb.name);
-        if (nb.id === to) return reconstruct(parent, nameOf, from, to);
-        next.push(nb.id);
-      }
-    }
-    frontier = next;
-  }
-  return null;
-}
-
-function reconstruct(
-  parent: Map<number, number>,
-  nameOf: Map<number, string>,
-  from: number,
-  to: number,
-): PathResult {
-  const ids: number[] = [];
-  let cur = to;
-  while (cur !== -1) {
-    ids.push(cur);
-    cur = parent.get(cur) ?? -1;
-  }
-  ids.reverse();
-  return {
+  const toResult = (ids: number[]): PathResult => ({
     path: ids.map((id) => ({ id, name: nameOf.get(id) ?? '' })),
     moves: ids.length - 1,
+  });
+
+  if (from === to) return toResult([from]);
+
+  const aParent = new Map<number, number>([[from, -1]]);
+  const bParent = new Map<number, number>([[to, -1]]);
+  let aFront = [from];
+  let bFront = [to];
+  let aLevel = 0;
+  let bLevel = 0;
+  let fetched = 0;
+
+  // stitch a meeting edge u(start side) — v(target side) into a full id path
+  const stitch = (u: number, v: number): number[] => {
+    const left: number[] = [];
+    for (let c = u; c !== -1; c = aParent.get(c) ?? -1) left.push(c);
+    left.reverse();
+    const right: number[] = [];
+    for (let c = v; c !== -1; c = bParent.get(c) ?? -1) right.push(c);
+    return [...left, ...right];
   };
+
+  while (aFront.length && bFront.length && aLevel + bLevel < maxDepth) {
+    const expandA = aFront.length <= bFront.length;
+    const front = expandA ? aFront : bFront;
+    const parentSelf = expandA ? aParent : bParent;
+    const parentOther = expandA ? bParent : aParent;
+
+    if (fetched + front.length > fetchBudget) break;
+    fetched += front.length;
+
+    const lists = await mapLimit(front, 12, async (nid) => ({
+      nid,
+      nbs: await neighborRefsOf(nid),
+    }));
+
+    const nextFront: number[] = [];
+    let best: number[] | null = null;
+
+    for (const { nid, nbs } of lists) {
+      for (const nb of nbs) {
+        if (!nameOf.has(nb.id)) nameOf.set(nb.id, nb.name);
+        if (parentOther.has(nb.id)) {
+          const ids = expandA ? stitch(nid, nb.id) : stitch(nb.id, nid);
+          if (!best || ids.length < best.length) best = ids;
+        }
+        if (!parentSelf.has(nb.id)) {
+          parentSelf.set(nb.id, nid);
+          nextFront.push(nb.id);
+        }
+      }
+    }
+    if (best) return toResult(best);
+
+    if (expandA) {
+      aFront = nextFront;
+      aLevel++;
+    } else {
+      bFront = nextFront;
+      bLevel++;
+    }
+  }
+  return null;
 }
